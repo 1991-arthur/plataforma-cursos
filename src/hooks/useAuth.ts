@@ -1,42 +1,63 @@
-"use client";
+'use client';
 
-import { useState, createContext, useContext } from "react";
-
-const AuthContext = createContext({});
+import { useState, useEffect } from 'react';
+import { 
+  User, 
+  onAuthStateChanged, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut as firebaseSignOut,
+  updateProfile
+} from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 export function useAuth() {
-  return useContext(AuthContext);
-}
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
 
-  const signIn = async (email, password) => {
-    console.log("Sign in:", email);
-    setUser({ email, name: "Usuário Teste" });
-    return true;
+    return unsubscribe;
+  }, []);
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      throw error;
+    }
   };
 
-  const signUp = async (email, password, name) => {
-    console.log("Sign up:", email, name);
-    setUser({ email, name });
-    return true;
+  const signUp = async (email: string, password: string, name: string) => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(userCredential.user, { displayName: name });
+    } catch (error) {
+      throw error;
+    }
   };
 
   const signOut = async () => {
-    setUser(null);
+    try {
+      await firebaseSignOut(auth);
+    } catch (error) {
+      throw error;
+    }
   };
 
-  const value = {
+  return {
     user,
+    loading,
     signIn,
     signUp,
     signOut
   };
+}
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  return children;
 }
