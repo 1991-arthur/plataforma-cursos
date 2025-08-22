@@ -1,25 +1,38 @@
+"use client";
+
+import { useState } from "react";
+
 export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
   return (
-    <div style={{ padding: "20px", maxWidth: "400px", margin: "50px auto" }}>
-      <h1>Login - Página Funcionando!</h1>
-      <p>Página de login carregada com sucesso!</p>
-      <form>
-        <div style={{ marginBottom: "15px" }}>
-          <label>Email:</label>
-          <input type="email" style={{ width: "100%", padding: "8px" }} />
-        </div>
-        <div style={{ marginBottom: "15px" }}>
-          <label>Senha:</label>
-          <input type="password" style={{ width: "100%", padding: "8px" }} />
-        </div>
-        <button type="submit" style={{ padding: "10px 20px" }}>
-          Entrar
-        </button>
-      </form>
-      
-      <p style={{ marginTop: "20px" }}>
-        <a href="/">← Voltar para a página inicial</a>
-      </p>
+    <div style={{ padding: "20px" }}>
+      <h1>Login</h1>
+      <div>
+        <input 
+          type="email" 
+          value={email} 
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+          style={{ padding: "8px", width: "200px", marginBottom: "10px" }}
+        />
+      </div>
+      <div>
+        <input 
+          type="password" 
+          value={password} 
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Senha"
+          style={{ padding: "8px", width: "200px", marginBottom: "10px" }}
+        />
+      </div>
+      <button style={{ padding: "8px 16px" }}>
+        Entrar
+      </button>
+      <a href="/" style={{ display: "block", marginTop: "20px" }}>
+        ← Voltar para home
+      </a>
     </div>
-  )
+  );
 }
