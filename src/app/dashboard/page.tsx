@@ -231,7 +231,7 @@ export default function DashboardPage() {
               marginBottom: '16px',
               margin: '0 0 16px 0'
             }}>
-              🏫 Criar Novo Curso (Tenant)
+              🏫 Criar Novo Projeto (Tenant)
             </h3>
             
             {message && (
@@ -261,7 +261,7 @@ export default function DashboardPage() {
                   color: '#334155',
                   marginBottom: '6px'
                 }}>
-                  Nome do Curso
+                  Nome do Projeto
                 </label>
                 <input
                   type="text"
@@ -276,7 +276,7 @@ export default function DashboardPage() {
                     fontSize: '14px',
                     outline: 'none'
                   }}
-                  placeholder="Ex: Curso Completo de React"
+                  placeholder="Projeto Idiomas"
                 />
               </div>
               
@@ -304,7 +304,7 @@ export default function DashboardPage() {
                       fontSize: '14px',
                       outline: 'none'
                     }}
-                    placeholder="meu-curso"
+                    placeholder="projeto-idiomas"
                   />
                   <span style={{
                     padding: '10px 12px',
@@ -334,7 +334,7 @@ export default function DashboardPage() {
                   transition: 'background-color 0.2s'
                 }}
               >
-                {creating ? 'Criando...' : 'Criar Curso'}
+                {creating ? 'Criando...' : 'Criar Projeto'}
               </Button>
             </form>
           </div>
@@ -348,7 +348,7 @@ export default function DashboardPage() {
               marginBottom: '16px',
               margin: '0 0 16px 0'
             }}>
-              📚 Meus Cursos
+              🗃️ Meus Projetos
             </h3>
             
             {loadingTenants ? (
@@ -357,7 +357,7 @@ export default function DashboardPage() {
                 padding: '32px',
                 color: '#64748b'
               }}>
-                Carregando cursos...
+                Carregando projetos...
               </div>
             ) : tenants.length === 0 ? (
               <div style={{
@@ -374,13 +374,13 @@ export default function DashboardPage() {
                   color: '#334155',
                   margin: '0 0 8px 0'
                 }}>
-                  Nenhum curso criado ainda
+                  Nenhum projeto criado ainda
                 </h4>
                 <p style={{
                   color: '#64748b',
                   margin: 0
                 }}>
-                  Crie seu primeiro curso usando o formulário acima.
+                  Crie seu primeiro projeto usando o formulário acima.
                 </p>
               </div>
             ) : (

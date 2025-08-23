@@ -226,7 +226,7 @@ export default function TenantHomePage({ params }: { params: Promise<{ subdomain
                   display: 'inline-block'
                 }}
               >
-                ← Voltar para Meus Cursos
+                ← Voltar para Meus Projetos
               </Link>
             </div>
           </div>
