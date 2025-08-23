@@ -448,12 +448,25 @@ export default function DashboardPage() {
                       }}>
                         Criado em: {tenant.createdAt?.toDate?.().toLocaleDateString('pt-BR') || 'Data não disponível'}
                       </div>
-                      <link
-                        href={`http://localhost:3000/?tenant=${tenant.subdomain}`} // Opção 2: URL completa com query param
-                        className="inline-block bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition duration-300 text-sm" // Classes do Tailwind para estilo
+                      <button
+                        onClick={() => {
+                          // Para desenvolvimento, use o parâmetro de query
+                          // Em produção, seria: http://{tenant.subdomain}.seudominio.com
+                          window.open(`http://localhost:3000/?tenant=${tenant.subdomain}`, '_blank');
+                        }}
+                        style={{
+                          background: '#0ea5e9',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '6px 12px',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                          fontWeight: '500'
+                        }}
                       >
                         Gerenciar
-                      </link>
+                      </button>
                     </div>
                   </div>
                 ))}
