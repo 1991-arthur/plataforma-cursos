@@ -1,20 +1,20 @@
-// src/app/login/page.tsx
+// src/app/register/page.tsx
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import Link from 'next/link'; // Importa o componente Link
+import Link from 'next/link';
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  // const [name, setName] = useState(''); // Removido: Não é usado para login
-  // const [isLogin, setIsLogin] = useState(true); // Removido: Não é mais um toggle
+  const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
   
-  const { signIn /*, signUp*/ } = useAuth(); // Removido signUp: Não é usado nesta página
+  const { signUp } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,19 +23,64 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // if (isLogin) { // Simplificado: Esta página é apenas para login
-        await signIn(email, password);
-        router.push('/dashboard'); // Redireciona após login bem-sucedido
-      // } else {
-      //   // Esta parte foi movida para /register
-      // }
+      await signUp(email, password, name);
+      setSuccess(true);
+      // Opcional: Redirecionar automaticamente após alguns segundos
+      // setTimeout(() => router.push('/login'), 3000);
     } catch (error: any) {
-      console.error("Erro no login:", error); // Adicionado log para depuração
-      setError(error.message || 'Falha ao fazer login. Verifique suas credenciais.');
+      console.error("Erro no registro:", error);
+      setError(error.message || 'Falha ao criar conta. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
+
+  if (success) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px'
+      }}>
+        <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          width: '100%',
+          maxWidth: '400px',
+          padding: '32px',
+          textAlign: 'center'
+        }}>
+          <h1 style={{
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: '#10b981', // Verde para sucesso
+            marginBottom: '16px'
+          }}>
+            Conta Criada com Sucesso!
+          </h1>
+          <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+            Sua conta foi criada. Agora você pode fazer login.
+          </p>
+          <Link href="/login" style={{
+            display: 'inline-block',
+            background: '#3b82f6',
+            color: 'white',
+            fontWeight: '600',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            textDecoration: 'none',
+            transition: 'background-color 0.2s'
+          }}>
+            Fazer Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -55,23 +100,49 @@ export default function LoginPage() {
         padding: '32px'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          {/* Título fixo para Login */}
           <h1 style={{
             fontSize: '32px',
             fontWeight: 'bold',
             color: '#1f2937',
             marginBottom: '8px'
           }}>
-            Entrar
+            Criar Conta
           </h1>
-          {/* Subtítulo fixo para Login */}
           <p style={{ color: '#6b7280' }}>
-            Acesse sua plataforma de cursos
+            Crie sua conta para começar
           </p>
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* Campo de Nome removido: Não é necessário para login */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '8px'
+            }}>
+              Nome
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '16px',
+                outline: 'none',
+                transition: 'border-color 0.2s'
+              }}
+              placeholder="Seu nome completo"
+              required
+              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+            />
+          </div>
 
           <div style={{ marginBottom: '24px' }}>
             <label style={{
@@ -128,9 +199,17 @@ export default function LoginPage() {
               }}
               placeholder="••••••••"
               required
+              minLength={6} // Exigir senha mínima
               onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
               onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
             />
+            <p style={{ 
+              fontSize: '12px', 
+              color: '#9ca3af', 
+              marginTop: '4px' 
+            }}>
+              Mínimo de 6 caracteres
+            </p>
           </div>
 
           {error && (
@@ -167,23 +246,19 @@ export default function LoginPage() {
               if (!loading) e.target.style.background = '#3b82f6';
             }}
           >
-            {loading ? 'Entrando...' : 'Entrar'}
+            {loading ? 'Criando Conta...' : 'Criar Conta'}
           </button>
         </form>
 
-        {/* Link para a página de registro, substituindo o botão toggle */}
         <div style={{ marginTop: '24px', textAlign: 'center' }}>
           <p style={{ color: '#6b7280' }}>
-            Não tem conta?{' '}
-            <Link
-              href="/register" // Link para a nova página de registro
-              style={{
-                color: '#3b82f6',
-                fontWeight: '500',
-                textDecoration: 'underline'
-              }}
-            >
-              Criar uma conta
+            Já tem uma conta?{' '}
+            <Link href="/login" style={{
+              color: '#3b82f6',
+              fontWeight: '500',
+              textDecoration: 'underline'
+            }}>
+              Fazer login
             </Link>
           </p>
         </div>

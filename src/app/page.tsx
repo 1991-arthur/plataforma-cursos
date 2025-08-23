@@ -38,7 +38,7 @@ export default function HomePage() {
 
           <div className="mt-6 text-sm text-gray-500">
             <p>
-              Não tem uma conta? <Link href="/auth/register" className="font-medium text-blue-600 hover:text-blue-500">Registre-se</Link>
+              Não tem uma conta? <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">Registre-se</Link>
             </p>
           </div>
         </div>
