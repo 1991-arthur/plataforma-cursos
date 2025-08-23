@@ -1,16 +1,20 @@
-// src/app/tenant/[subdomain]/dashboard/courses/[courseId]/modules/[moduleId]/lessons/[lessonId]/page.tsx
+// src/app/tenant/[subdomain]/dashboard/courses/[courseId]/modules/[id]/lessons/[lessonId]/page.tsx
+// (Note a mudança no caminho do arquivo refletindo [id] em vez de [moduleId] para o módulo)
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import Link from 'next/link';
 
-export default async function LessonViewPage({ params }: { params: Promise<{ subdomain: string; courseId: string; moduleId: string; lessonId: string }> }) {
-  const { subdomain, courseId, moduleId, lessonId } = await params;
+export default async function LessonViewPage({ params }: { params: Promise<{ subdomain: string; courseId: string; id: string; lessonId: string }> }) {
+  // ✅ CORREÇÃO 1: O tipo agora reflete que o parâmetro dinâmico para o módulo é 'id'
+  // ✅ CORREÇÃO 2: Desestruturamos 'id' e o renomeamos para 'moduleId' para manter a lógica
+  const { subdomain, courseId, id: moduleId, lessonId } = await params;
 
   console.log(`LessonViewPage: Acessando aula '${lessonId}' do módulo '${moduleId}' do curso '${courseId}' no tenant '${subdomain}'`);
 
   try {
     // Verificar se a aula existe e pertence ao módulo
+    // ✅ CORREÇÃO 3: Usamos 'moduleId' (que veio de 'id') para verificar a propriedade da aula
     const lessonRef = doc(db, 'lessons', lessonId);
     const lessonSnap = await getDoc(lessonRef);
 
@@ -22,6 +26,7 @@ export default async function LessonViewPage({ params }: { params: Promise<{ sub
     const lessonData = lessonSnap.data();
 
     // Verificar se o módulo pertence ao curso (segurança adicional)
+    // ✅ CORREÇÃO 4: Usamos 'moduleId' (que veio de 'id') para verificar a propriedade do curso
     if (lessonData.courseId !== courseId) {
       console.log(`LessonViewPage: Aula '${lessonId}' não pertence ao curso '${courseId}'.`);
       return notFound();

@@ -1,17 +1,21 @@
-// src/app/tenant/[subdomain]/dashboard/courses/[courseId]/modules/[moduleId]/lessons/page.tsx
+// src/app/tenant/[subdomain]/dashboard/courses/[courseId]/modules/[id]/lessons/page.tsx
+// (Note a mudança no caminho do arquivo refletindo [id] em vez de [moduleId])
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import Link from 'next/link';
 import DeleteLessonButton from '@/components/tenant/DeleteLessonButton';
 
-export default async function ModuleLessonsPage({ params }: { params: Promise<{ subdomain: string; courseId: string; moduleId: string }> }) {
-  const { subdomain, courseId, moduleId } = await params;
+export default async function ModuleLessonsPage({ params }: { params: Promise<{ subdomain: string; courseId: string; id: string }> }) {
+  // ✅ CORREÇÃO 1: O tipo agora reflete que o parâmetro dinâmico é 'id'
+  // ✅ CORREÇÃO 2: Desestruturamos 'id' e o renomeamos para 'moduleId' para clareza
+  const { subdomain, courseId, id: moduleId } = await params;
 
   console.log(`ModuleLessonsPage: Acessando aulas para o módulo: ${moduleId} do curso: ${courseId} no tenant: ${subdomain}`);
 
   try {
     // Verificar se o módulo existe e pertence ao curso
+    // ✅ CORREÇÃO 3: Usamos 'moduleId' (que veio de 'id') para buscar o documento
     const moduleRef = doc(db, 'modules', moduleId);
     const moduleSnap = await getDoc(moduleRef);
 
@@ -33,6 +37,7 @@ export default async function ModuleLessonsPage({ params }: { params: Promise<{ 
     const courseData = courseSnap.data();
 
     // Buscar as aulas do módulo, ordenadas por 'order'
+    // ✅ CORREÇÃO 4: Usamos 'moduleId' (que veio de 'id') na query
     const lessonsQuery = query(
       collection(db, 'lessons'),
       where('moduleId', '==', moduleId),
@@ -112,6 +117,7 @@ export default async function ModuleLessonsPage({ params }: { params: Promise<{ 
                         >
                           Editar
                         </Link>
+                        {/* Passando 'moduleId' para o componente */}
                         <DeleteLessonButton lessonId={lesson.id} moduleId={moduleId} courseId={courseId} subdomain={subdomain} />
                       </div>
                     </div>
