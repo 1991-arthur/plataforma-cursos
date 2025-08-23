@@ -3,22 +3,20 @@ import { notFound } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
-// ATUALIZAÇÃO: O tipo de params deve indicar que é uma Promise
 export default async function TenantPage({ params }: { params: Promise<{ subdomain: string }> }) {
-  // ATUALIZAÇÃO: Aguarde params antes de usá-lo
   const { subdomain } = await params;
 
   console.log(`TenantPage: Carregando página para o subdomínio/tenant: ${subdomain}`);
 
   // Verifica se o subdomínio é válido
-  if (['admin', 'auth', 'api', '_next'].includes(subdomain)) {
+  if (['admin', 'auth'].includes(subdomain)) {
     console.log(`TenantPage: Subdomínio '${subdomain}' é reservado.`);
     return notFound();
   }
 
   // Busca o documento do tenant no Firestore com base no subdomínio
   try {
-    const tenantRef = doc(db, 'tenants', subdomain); // ID do documento = subdomain
+    const tenantRef = doc(db, 'tenants', subdomain);
     const tenantSnapshot = await getDoc(tenantRef);
 
     if (!tenantSnapshot.exists()) {
