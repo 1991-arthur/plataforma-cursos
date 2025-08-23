@@ -1,22 +1,65 @@
 // src/app/tenant/[subdomain]/page.tsx
-export default async function TenantPage({ params }: { params: { subdomain: string } }) {
-  const { subdomain } = params;
+import { notFound } from 'next/navigation';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
-  // Log para verificar se o componente está sendo chamado
-  console.log("TenantPage chamada com subdomain:", subdomain);
+// ATUALIZAÇÃO: O tipo de params deve indicar que é uma Promise
+export default async function TenantPage({ params }: { params: Promise<{ subdomain: string }> }) {
+  // ATUALIZAÇÃO: Aguarde params antes de usá-lo
+  const { subdomain } = await params;
 
-  // Garante que o componente é Server Component
-  await new Promise(resolve => setTimeout(resolve, 100));
+  console.log(`TenantPage: Carregando página para o subdomínio/tenant: ${subdomain}`);
 
-  return (
-    <div style={{ padding: '50px', textAlign: 'center', backgroundColor: '#f0f8ff' }}>
-      <h1 style={{ color: '#4a90e2' }}>✅ Subdomínio Detectado: {subdomain}</h1>
-      <p style={{ fontSize: '18px' }}>
-        Se você está vendo isso, a rota dinâmica <code>/tenant/[subdomain]/page.tsx</code> está funcionando!
-      </p>
-      <p style={{ marginTop: '20px', fontSize: '16px', color: '#666' }}>
-        Próximo passo: Integrar com o Firestore para buscar os dados do tenant.
-      </p>
-    </div>
-  );
+  // Verifica se o subdomínio é válido
+  if (['admin', 'auth', 'api', '_next'].includes(subdomain)) {
+    console.log(`TenantPage: Subdomínio '${subdomain}' é reservado.`);
+    return notFound();
+  }
+
+  // Busca o documento do tenant no Firestore com base no subdomínio
+  try {
+    const tenantRef = doc(db, 'tenants', subdomain); // ID do documento = subdomain
+    const tenantSnapshot = await getDoc(tenantRef);
+
+    if (!tenantSnapshot.exists()) {
+      console.log(`TenantPage: Tenant '${subdomain}' não encontrado no Firestore.`);
+      return notFound();
+    }
+
+    const tenantData = tenantSnapshot.data();
+    console.log(`TenantPage: Dados do tenant '${subdomain}' carregados:`, tenantData);
+
+    // Renderiza o conteúdo do tenant
+    return (
+      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center">
+            <h1 className="text-4xl font-extrabold text-gray-900 mb-4">
+              Bem-vindo ao {tenantData.name}
+            </h1>
+            <p className="text-lg text-gray-600 mb-8">
+              Este é o portal exclusivo para o curso <strong>{tenantData.name}</strong>.
+            </p>
+            <div className="mt-10 flex justify-center space-x-4">
+              <a
+                href={`/tenant/${subdomain}/login`}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300 ease-in-out transform hover:scale-105"
+              >
+                Entrar
+              </a>
+              <a
+                href={`/tenant/${subdomain}/register`}
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 ease-in-out transform hover:scale-105"
+              >
+                Cadastrar-se
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  } catch (error) {
+    console.error(`TenantPage: Erro ao buscar dados do tenant '${subdomain}':`, error);
+    return notFound();
+  }
 }

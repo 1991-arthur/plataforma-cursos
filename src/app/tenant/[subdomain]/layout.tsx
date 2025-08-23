@@ -3,11 +3,13 @@ import { notFound } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
-export default async function TenantLayout({ children, params }: { children: React.ReactNode; params: { subdomain: string } }) {
-  const { subdomain } = params;
+// ATUALIZAÇÃO: O tipo de params deve indicar que é uma Promise
+export default async function TenantLayout({ children, params }: { children: React.ReactNode; params: Promise<{ subdomain: string }> }) {
+  // ATUALIZAÇÃO: Aguarde params antes de usá-lo
+  const { subdomain } = await params;
 
   // Verifica se o subdomínio é válido
-  if (['admin', 'auth'].includes(subdomain)) {
+  if (['admin', 'auth', 'api', '_next'].includes(subdomain)) {
     return notFound();
   }
 
@@ -34,7 +36,7 @@ export default async function TenantLayout({ children, params }: { children: Rea
       </div>
     );
   } catch (error) {
-    console.error('Erro ao buscar tenant:', error);
+    console.error('Erro ao buscar tenant no layout:', error);
     return notFound();
   }
 }
