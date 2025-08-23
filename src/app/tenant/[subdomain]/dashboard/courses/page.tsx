@@ -91,7 +91,14 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
                           </p>
                         </div>
                       </div>
+                      {/* Linha modificada: Adicionado o link "Gerenciar Conteúdo" */}
                       <div className="mt-4 flex space-x-3">
+                        <Link
+                          href={`/tenant/${subdomain}/dashboard/courses/${course.id}/modules`}
+                          className="text-green-600 hover:text-green-900 font-medium"
+                        >
+                          Gerenciar Conteúdo
+                        </Link>
                         <Link
                           href={`/tenant/${subdomain}/dashboard/courses/edit/${course.id}`}
                           className="text-indigo-600 hover:text-indigo-900"
