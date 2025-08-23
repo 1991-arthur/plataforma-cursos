@@ -450,9 +450,8 @@ export default function DashboardPage() {
                       </div>
                       <button
                         onClick={() => {
-                          // Para desenvolvimento, use o parâmetro de query
-                          // Em produção, seria: http://{tenant.subdomain}.seudominio.com
-                          window.open(`http://localhost:3000/?tenant=${tenant.subdomain}`, '_blank');
+                          // Abre direto a rota dinâmica correta
+                          window.open(`/tenant/${tenant.subdomain}`, '_blank');
                         }}
                         style={{
                           background: '#0ea5e9',
