@@ -1,11 +1,12 @@
 // src/app/tenant/[subdomain]/courses/page.tsx
-import { notFound, redirect } from 'next/navigation'; // Importa redirect também, por segurança
+import { notFound } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'; // Mantém as importações
+import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
 import Link from 'next/link';
-// import DeleteCourseButton from '@/components/tenant/DeleteCourseButton'; // Mantenha se o componente existir e estiver funcionando com estilos inline
+// ✅ 1. Importar a Server Action
+import { deleteCourseAction } from '@/app/actions/courseActions';
 
-// Definindo uma interface básica para o Tenant (ajuste conforme seus dados)
+// Definindo interfaces para tipagem (ajuste conforme seus dados)
 interface TenantData {
   id: string;
   name: string;
@@ -15,7 +16,6 @@ interface TenantData {
   // settings?: { ... };
 }
 
-// Definindo uma interface básica para o Course (ajuste conforme seus dados)
 interface CourseData {
   id: string;
   title: string;
@@ -38,7 +38,7 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
     return notFound();
   }
 
-  // Busca o documento do tenant no Firestore com base no CAMPO 'subdomain'
+  // Busca o documento do tenant no Firestore com base no subdomain
   try {
     // ✅ CONSULTA CORRIGIDA: Buscar pelo campo 'subdomain'
     const tenantsCollection = collection(db, 'tenants');
@@ -60,7 +60,12 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
     console.log(`[CoursesPage] Dados do tenant '${subdomain}' carregados:`, { id: tenantData.id, name: tenantData.name });
 
     // Busca os cursos associados a este tenant usando o ID REAL do documento do tenant
-    const coursesQuery = query(collection(db, 'courses'), where('tenantId', '==', tenantData.id));
+    // ✅ Adicionado orderBy para ordenar por data de criação, mais recente primeiro
+    const coursesQuery = query(
+      collection(db, 'courses'),
+      where('tenantId', '==', tenantData.id),
+      orderBy('createdAt', 'desc') // Ordena por data de criação, decrescente
+    );
     const coursesSnapshot = await getDocs(coursesQuery);
 
     const courses: CourseData[] = coursesSnapshot.docs.map(doc => ({
@@ -279,22 +284,32 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
                           >
                             Editar
                           </Link>
-                          {/* Se DeleteCourseButton existir e usar estilos inline, mantenha. Senão, comente ou remova */}
-                          {/* <DeleteCourseButton courseId={course.id} subdomain={subdomain} /> */}
-                          {/* Placeholder para Delete, se não tiver o componente */}
-                          <button
-                            disabled
-                            style={{
-                              color: '#9ca3af',
-                              fontWeight: '500',
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'not-allowed',
-                              padding: 0
-                            }}
-                          >
-                            Excluir (em breve)
-                          </button>
+                          {/* ✅ 2. Adicionando o Formulário e Botão de Excluir */}
+                          <form action={deleteCourseAction} style={{ display: 'inline' }}>
+                            <input type="hidden" name="courseId" value={course.id} />
+                            <input type="hidden" name="subdomain" value={subdomain} />
+                            <button
+                              type="submit"
+                              // onClick={(e) => {
+                              //   // Opcional: Adicionar confirmação com window.confirm
+                              //   if (!confirm('Tem certeza que deseja excluir este curso? Esta ação não pode ser desfeita.')) {
+                              //     e.preventDefault();
+                              //   }
+                              // }}
+                              style={{
+                                color: '#ef4444', // Vermelho para indicar ação destrutiva
+                                fontWeight: '500',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: 0,
+                                fontSize: '14px'
+                              }}
+                            >
+                              Excluir
+                            </button>
+                          </form>
+                          {/* ✅ FIM da Adição do Botão de Excluir */}
                         </div>
                       </div>
                     </li>
