@@ -13,8 +13,17 @@ export default function EditLessonPage({ params }: { params: Promise<{ subdomain
   const { subdomain, courseId, moduleId, id } = React.use(params);
 
   const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [type, setType] = useState('text');
+  const [description, setDescription] = useState('');
+  const [contentType, setContentType] = useState<'video' | 'text' | 'code' | 'pdf'>('text');
+  const [contentData, setContentData] = useState({
+    textContent: '',
+    videoUrl: '',
+    videoProvider: 'youtube',
+    codeContent: '',
+    codeLanguage: 'javascript',
+    codeEditable: false,
+    pdfUrl: '',
+  });
   const [order, setOrder] = useState(1);
   const [duration, setDuration] = useState(''); // Em minutos
   const [loading, setLoading] = useState(true);
@@ -30,11 +39,69 @@ export default function EditLessonPage({ params }: { params: Promise<{ subdomain
         if (lessonSnap.exists() && lessonSnap.data().moduleId === moduleId) {
           const data = lessonSnap.data();
           setTitle(data.title || '');
-          setContent(data.content || '');
-          setType(data.type || 'text');
+          setDescription(data.description || '');
           setOrder(data.order || 1);
+          setContentType(data.type || 'text');
+          
+          // Extrair conteúdo baseado na estrutura nova
+          if (data.content) {
+            const content = data.content;
+            if (content.type === 'video') {
+              setContentData({
+                textContent: '',
+                videoUrl: content.data?.url || '',
+                videoProvider: content.data?.provider || 'youtube',
+                codeContent: '',
+                codeLanguage: 'javascript',
+                codeEditable: false,
+                pdfUrl: ''
+              });
+            } else if (content.type === 'text') {
+              setContentData({
+                textContent: content.data?.content || '',
+                videoUrl: '',
+                videoProvider: 'youtube',
+                codeContent: '',
+                codeLanguage: 'javascript',
+                codeEditable: false,
+                pdfUrl: ''
+              });
+            } else if (content.type === 'code') {
+              setContentData({
+                textContent: '',
+                videoUrl: '',
+                videoProvider: 'youtube',
+                codeContent: content.data?.code || '',
+                codeLanguage: content.data?.language || 'javascript',
+                codeEditable: content.data?.editable || false,
+                pdfUrl: ''
+              });
+            } else if (content.type === 'pdf') {
+              setContentData({
+                textContent: '',
+                videoUrl: '',
+                videoProvider: 'youtube',
+                codeContent: '',
+                codeLanguage: 'javascript',
+                codeEditable: false,
+                pdfUrl: content.data?.url || ''
+              });
+            }
+          } else {
+            // Para conteúdo legado
+            if (data.content) {
+              if (contentType === 'video') {
+                setContentData(prev => ({...prev, videoUrl: data.content || ''}));
+              } else if (contentType === 'text') {
+                setContentData(prev => ({...prev, textContent: data.content || ''}));
+              } else if (contentType === 'pdf') {
+                setContentData(prev => ({...prev, pdfUrl: data.content || ''}));
+              }
+            }
+          }
+          
           if (data.duration) {
-            setDuration(Math.floor(data.duration / 60).toString()); // Converter segundos para minutos
+            setDuration(Math.floor(data.duration / 60).toString());
           }
         } else {
           setMessage({ type: 'error', text: 'Aula não encontrada ou não pertence a este módulo.' });
@@ -64,13 +131,85 @@ export default function EditLessonPage({ params }: { params: Promise<{ subdomain
     setMessage(null);
 
     try {
+      // Criar conteúdo estruturado para atualização
+      let content: any;
+      
+      switch (contentType) {
+        case 'video':
+          content = {
+            id: `content-${Date.now()}`,
+            type: 'video',
+            title: title,
+            description: description || '',
+            order: 1,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            data: {
+              url: contentData.videoUrl,
+              provider: contentData.videoProvider as 'youtube' | 'vimeo' | 'local' | 'external',
+              duration: duration ? parseInt(duration, 10) * 60 : 0
+            }
+          };
+          break;
+          
+        case 'text':
+          content = {
+            id: `content-${Date.now()}`,
+            type: 'text',
+            title: title,
+            description: description || '',
+            order: 1,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            data: {
+              content: contentData.textContent,
+              assets: []
+            }
+          };
+          break;
+          
+        case 'code':
+          content = {
+            id: `content-${Date.now()}`,
+            type: 'code',
+            title: title,
+            description: description || '',
+            order: 1,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            data: {
+              language: contentData.codeLanguage,
+              code: contentData.codeContent,
+              editable: contentData.codeEditable,
+              readOnly: !contentData.codeEditable
+            }
+          };
+          break;
+          
+        case 'pdf':
+          content = {
+            id: `content-${Date.now()}`,
+            type: 'pdf',
+            title: title,
+            description: description || '',
+            order: 1,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            data: {
+              url: contentData.pdfUrl
+            }
+          };
+          break;
+      }
+
       const durationInSeconds = duration ? parseInt(duration, 10) * 60 : 0;
 
       const lessonRef = doc(db, 'lessons', id);
       await updateDoc(lessonRef, {
         title: title.trim(),
-        content: content.trim(),
-        type,
+        description: description.trim(),
+        content, // Conteúdo estruturado
+        type: contentType,
         order: parseInt(order.toString(), 10),
         duration: durationInSeconds || null,
         updatedAt: serverTimestamp(),
@@ -230,7 +369,7 @@ export default function EditLessonPage({ params }: { params: Promise<{ subdomain
               gridTemplateColumns: '1fr 1fr',
               gap: '20px'
             }}>
-              {/* Coluna Esquerda - Título e Tipo */}
+              {/* Coluna Esquerda - Título, Descrição e Tipo */}
               <div>
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{
@@ -270,8 +409,8 @@ export default function EditLessonPage({ params }: { params: Promise<{ subdomain
                     Tipo de Conteúdo
                   </label>
                   <select
-                    value={type}
-                    onChange={(e) => setType(e.target.value)}
+                    value={contentType}
+                    onChange={(e) => setContentType(e.target.value as any)}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -284,13 +423,41 @@ export default function EditLessonPage({ params }: { params: Promise<{ subdomain
                   >
                     <option value="text">Texto</option>
                     <option value="video">Vídeo</option>
+                    <option value="code">Código</option>
                     <option value="pdf">PDF</option>
-                    <option value="quiz">Quiz</option>
                   </select>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#334155',
+                    marginBottom: '6px'
+                  }}>
+                    Descrição
+                  </label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      outline: 'none',
+                      resize: 'vertical',
+                      minHeight: '80px'
+                    }}
+                    placeholder="Descreva brevemente o conteúdo desta aula..."
+                  />
                 </div>
               </div>
 
-              {/* Coluna Direita - Ordem e Duração */}
+              {/* Coluna Direita - Ordem, Duração e Conteúdo específico */}
               <div>
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{
@@ -344,10 +511,8 @@ export default function EditLessonPage({ params }: { params: Promise<{ subdomain
                     placeholder="Ex: 15"
                   />
                 </div>
-              </div>
 
-              {/* Conteúdo - Full width */}
-              <div style={{ gridColumn: '1 / -1' }}>
+                {/* Conteúdo específico por tipo */}
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{
                     display: 'block',
@@ -356,31 +521,132 @@ export default function EditLessonPage({ params }: { params: Promise<{ subdomain
                     color: '#334155',
                     marginBottom: '6px'
                   }}>
-                    Conteúdo
+                    {contentType === 'video' && 'URL do Vídeo'}
+                    {contentType === 'text' && 'Conteúdo de Texto'}
+                    {contentType === 'code' && 'Código'}
+                    {contentType === 'pdf' && 'URL do PDF'}
                   </label>
-                  <textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    rows={4}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      resize: 'vertical',
-                      minHeight: '100px'
-                    }}
-                    placeholder={type === 'video' ? 'URL do vídeo (YouTube, Vimeo, etc.)' : type === 'text' ? 'Digite o conteúdo da aula...' : 'Informações adicionais...'}
-                  />
-                  <div style={{
-                    marginTop: '6px',
-                    fontSize: '12px',
-                    color: '#64748b'
-                  }}>
-                    {type === 'video' ? 'Cole o link completo do vídeo.' : 'Insira o conteúdo textual da aula.'}
-                  </div>
+                  
+                  {contentType === 'video' && (
+                    <div>
+                      <input
+                        type="text"
+                        value={contentData.videoUrl}
+                        onChange={(e) => setContentData({...contentData, videoUrl: e.target.value})}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          outline: 'none',
+                          marginBottom: '10px'
+                        }}
+                        placeholder="https://youtube.com/watch?v=..."
+                      />
+                      <select
+                        value={contentData.videoProvider}
+                        onChange={(e) => setContentData({...contentData, videoProvider: e.target.value})}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          outline: 'none'
+                        }}
+                      >
+                        <option value="youtube">YouTube</option>
+                        <option value="vimeo">Vimeo</option>
+                        <option value="local">Arquivo Local</option>
+                        <option value="external">Link Externo</option>
+                      </select>
+                    </div>
+                  )}
+                  
+                  {contentType === 'text' && (
+                    <textarea
+                      value={contentData.textContent}
+                      onChange={(e) => setContentData({...contentData, textContent: e.target.value})}
+                      rows={4}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        outline: 'none',
+                        resize: 'vertical',
+                        minHeight: '100px'
+                      }}
+                      placeholder="Digite o conteúdo da aula..."
+                    />
+                  )}
+                  
+                  {contentType === 'code' && (
+                    <div>
+                      <textarea
+                        value={contentData.codeContent}
+                        onChange={(e) => setContentData({...contentData, codeContent: e.target.value})}
+                        rows={4}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          outline: 'none',
+                          fontFamily: 'monospace',
+                          marginBottom: '10px'
+                        }}
+                        placeholder="// Digite seu código aqui..."
+                      />
+                      <input
+                        type="text"
+                        value={contentData.codeLanguage}
+                        onChange={(e) => setContentData({...contentData, codeLanguage: e.target.value})}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          outline: 'none',
+                          marginBottom: '10px'
+                        }}
+                        placeholder="Linguagem (ex: javascript, python, html)"
+                      />
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={contentData.codeEditable}
+                          onChange={(e) => setContentData({...contentData, codeEditable: e.target.checked})}
+                        />
+                        Código editável
+                      </label>
+                    </div>
+                  )}
+                  
+                  {contentType === 'pdf' && (
+                    <input
+                      type="text"
+                      value={contentData.pdfUrl}
+                      onChange={(e) => setContentData({...contentData, pdfUrl: e.target.value})}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        outline: 'none'
+                      }}
+                      placeholder="https://exemplo.com/documento.pdf"
+                    />
+                  )}
                 </div>
               </div>
             </div>

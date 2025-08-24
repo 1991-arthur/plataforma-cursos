@@ -1,17 +1,51 @@
 // src/app/tenant/[subdomain]/courses/[courseId]/modules/[moduleId]/lessons/[lessonId]/page.tsx
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, Timestamp, orderBy } from 'firebase/firestore';
 import Link from 'next/link';
-import { ContentRenderer } from '@/components/content/ContentRenderer'; // ✅ Importar o novo componente
+import { ContentRenderer } from '@/components/content/ContentRenderer';
+import LessonProgressButton from '@/components/lesson/LessonProgressButton';
+import { getTotalLessonsInCourse } from '@/lib/progress';
 
-// Interfaces atualizadas
+// Função para converter timestamps do Firebase em datas simples
+function convertFirebaseData(data: any): any {
+  if (!data) return data;
+  
+  // Se for um objeto Timestamp do Firebase
+  if (data instanceof Timestamp) {
+    return new Date(data.seconds * 1000 + Math.floor(data.nanoseconds / 1000000));
+  }
+  
+  // Se for um objeto com propriedades de Timestamp
+  if (data.seconds !== undefined && data.nanoseconds !== undefined) {
+    return new Date(data.seconds * 1000 + Math.floor(data.nanoseconds / 1000000));
+  }
+  
+  // Se for um objeto, percorrer recursivamente
+  if (typeof data === 'object' && data !== null) {
+    if (Array.isArray(data)) {
+      return data.map(item => convertFirebaseData(item));
+    }
+    
+    const converted: any = {};
+    for (const key in data) {
+      if (data.hasOwnProperty(key)) {
+        converted[key] = convertFirebaseData(data[key]);
+      }
+    }
+    return converted;
+  }
+  
+  return data;
+}
+
+// Definindo interfaces para tipagem
 interface TenantData {
   id: string;
   name: string;
   subdomain: string;
   ownerId: string;
-  createdAt: any;
+  createdAt: Date;
 }
 
 interface CourseData {
@@ -20,7 +54,7 @@ interface CourseData {
   description?: string;
   price?: number;
   status: 'published' | 'draft';
-  createdAt: any;
+  createdAt: Date;
   tenantId: string;
 }
 
@@ -30,21 +64,22 @@ interface ModuleData {
   description?: string;
   order: number;
   courseId: string;
-  createdAt: any;
+  createdAt: Date;
 }
 
 interface LessonData {
   id: string;
   title: string;
   description?: string;
-  content?: string; // Este campo vai mudar para suportar conteúdo multimídia
-  contentData?: any; // Novo campo para conteúdo estruturado
+  content?: any;
+  contentData?: any;
   order: number;
   moduleId: string;
+  courseId: string;
   type: 'video' | 'text' | 'pdf' | 'code' | string;
   duration?: number;
-  createdAt: any;
-  updatedAt: any;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export default async function LessonViewPage({ params }: { params: Promise<{ subdomain: string; courseId: string; moduleId: string; lessonId: string }> }) {
@@ -54,18 +89,106 @@ export default async function LessonViewPage({ params }: { params: Promise<{ sub
   console.log(`[LessonViewPage] Acessando aula '${lessonId}' do módulo '${moduleId}' do curso '${courseId}' no tenant '${subdomain}'`);
 
   try {
-    // [Mesmo código de validação existente...]
-    
-    // ✅ PASSO 1-4: Mesmo código de verificação de permissões...
+    // ✅ PASSO 1: Buscar o tenant pelo subdomain para obter seu ID REAL
+    const tenantsCollection = collection(db, 'tenants');
+    const tenantQuery = query(tenantsCollection, where('subdomain', '==', subdomain));
+    const tenantSnapshot = await getDocs(tenantQuery);
+
+    if (tenantSnapshot.empty) {
+      console.log(`[LessonViewPage] Tenant com subdomain '${subdomain}' não encontrado.`);
+      return notFound();
+    }
+
+    const tenantDoc = tenantSnapshot.docs[0];
+    const tenantData: TenantData = {
+      id: tenantDoc.id,
+      ...(convertFirebaseData(tenantDoc.data()) as Omit<TenantData, 'id'>)
+    };
+
+    // ✅ PASSO 2: Verificar se o curso existe e pertence AO TENANT
+    const courseRef = doc(db, 'courses', courseId);
+    const courseSnap = await getDoc(courseRef);
+
+    if (!courseSnap.exists()) {
+      console.log(`[LessonViewPage] Curso '${courseId}' não encontrado.`);
+      return notFound();
+    }
+
+    const courseData: CourseData = {
+      id: courseSnap.id,
+      ...(convertFirebaseData(courseSnap.data()) as Omit<CourseData, 'id'>)
+    };
+
+    // Verifica se o tenantId do curso corresponde ao ID do tenant encontrado
+    if (courseData.tenantId !== tenantData.id) {
+      console.log(`[LessonViewPage] Curso '${courseId}' não pertence ao tenant '${subdomain}' (ID: ${tenantData.id}).`);
+      return notFound();
+    }
+
+    // ✅ PASSO 3: Verificar se o módulo existe e pertence AO CURSO
+    const moduleRef = doc(db, 'modules', moduleId);
+    const moduleSnap = await getDoc(moduleRef);
+
+    if (!moduleSnap.exists()) {
+      console.log(`[LessonViewPage] Módulo '${moduleId}' não encontrado.`);
+      return notFound();
+    }
+
+    const moduleData: ModuleData = {
+      id: moduleSnap.id,
+      ...(convertFirebaseData(moduleSnap.data()) as Omit<ModuleData, 'id'>)
+    };
+
+    // Verifica se o courseId do módulo corresponde ao ID do curso encontrado
+    if (moduleData.courseId !== courseData.id) {
+      console.log(`[LessonViewPage] Módulo '${moduleId}' não pertence ao curso '${courseId}'.`);
+      return notFound();
+    }
+
+    // ✅ PASSO 4: Verificar se a aula existe e pertence AO MÓDULO
+    const lessonRef = doc(db, 'lessons', lessonId);
+    const lessonSnap = await getDoc(lessonRef);
+
+    if (!lessonSnap.exists()) {
+      console.log(`[LessonViewPage] Aula '${lessonId}' não encontrada.`);
+      return notFound();
+    }
 
     const lessonData: LessonData = {
       id: lessonSnap.id,
-      ...(lessonSnap.data() as Omit<LessonData, 'id'>)
+      ...(convertFirebaseData(lessonSnap.data()) as Omit<LessonData, 'id'>)
     };
+
+    // Verifica se o moduleId da aula corresponde ao ID do módulo encontrado
+    if (lessonData.moduleId !== moduleData.id) {
+      console.log(`[LessonViewPage] Aula '${lessonId}' não pertence ao módulo '${moduleId}'.`);
+      return notFound();
+    }
+
+    // ✅ PASSO 5: Obter todas as aulas do módulo ordenadas por ordem
+    const lessonsQuery = query(
+      collection(db, 'lessons'),
+      where('moduleId', '==', moduleId),
+      orderBy('order', 'asc')
+    );
+    const lessonsSnapshot = await getDocs(lessonsQuery);
+    
+    const lessons: LessonData[] = lessonsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...(convertFirebaseData(doc.data()) as Omit<LessonData, 'id'>)
+    }));
+
+    // ✅ PASSO 6: Encontrar a aula anterior e próxima
+    const currentLessonIndex = lessons.findIndex(lesson => lesson.id === lessonId);
+    const previousLesson = currentLessonIndex > 0 ? lessons[currentLessonIndex - 1] : null;
+    const nextLesson = currentLessonIndex < lessons.length - 1 ? lessons[currentLessonIndex + 1] : null;
+
+    // ✅ PASSO 7: Obter o número total de aulas no curso
+    const totalLessonsInCourse = await getTotalLessonsInCourse(courseId);
 
     return (
       <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
-        {/* Header - mantido igual */}
+        {/* Header */}
         <div style={{
           background: 'white',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
@@ -154,8 +277,8 @@ export default async function LessonViewPage({ params }: { params: Promise<{ sub
                 color: '#64748b'
               }}>
                 <div style={{
-                  background: lessonData.type === 'video' ? '#ede9fe' : lessonData.type === 'text' ? '#dcfce7' : lessonData.type === 'pdf' ? '#fef3c7' : '#e5e7eb',
-                  color: lessonData.type === 'video' ? '#5b21b6' : lessonData.type === 'text' ? '#166534' : lessonData.type === 'pdf' ? '#92400e' : '#374151',
+                  background: lessonData.type === 'video' ? '#ede9fe' : lessonData.type === 'text' ? '#dcfce7' : lessonData.type === 'code' ? '#fef3c7' : lessonData.type === 'pdf' ? '#e0f2fe' : '#e5e7eb',
+                  color: lessonData.type === 'video' ? '#5b21b6' : lessonData.type === 'text' ? '#166534' : lessonData.type === 'code' ? '#92400e' : lessonData.type === 'pdf' ? '#0369a1' : '#374151',
                   fontSize: '12px',
                   fontWeight: '600',
                   padding: '4px 8px',
@@ -171,7 +294,7 @@ export default async function LessonViewPage({ params }: { params: Promise<{ sub
               </div>
             </div>
 
-            {/* Conteúdo da Aula - AGORA USANDO O NOVO SISTEMA */}
+            {/* Conteúdo da Aula */}
             <div style={{
               background: 'white',
               borderRadius: '8px',
@@ -179,10 +302,11 @@ export default async function LessonViewPage({ params }: { params: Promise<{ sub
               overflow: 'hidden',
               minHeight: '300px'
             }}>
-              {/* ✅ USANDO O NOVO ContentRenderer */}
               <div style={{ padding: '24px' }}>
-                {/* Se tiver o novo conteúdo estruturado */}
-                {lessonData.contentData ? (
+                {/* ✅ USANDO O NOVO ContentRenderer com dados convertidos */}
+                {lessonData.content ? (
+                  <ContentRenderer content={lessonData.content} />
+                ) : lessonData.contentData ? (
                   <ContentRenderer content={lessonData.contentData} />
                 ) : (
                   /* Conteúdo legado - manter compatibilidade */
@@ -232,6 +356,17 @@ export default async function LessonViewPage({ params }: { params: Promise<{ sub
                       }}>
                         {lessonData.content}
                       </div>
+                    ) : lessonData.type === 'code' && lessonData.content ? (
+                      <div style={{
+                        background: '#1e1e1e',
+                        color: '#d4d4d4',
+                        padding: '16px',
+                        borderRadius: '4px',
+                        fontFamily: 'monospace',
+                        overflow: 'auto'
+                      }}>
+                        <pre style={{ margin: 0 }}><code>{lessonData.content}</code></pre>
+                      </div>
                     ) : lessonData.type === 'pdf' ? (
                       <div style={{
                         textAlign: 'center',
@@ -277,36 +412,78 @@ export default async function LessonViewPage({ params }: { params: Promise<{ sub
               </div>
             </div>
 
-            {/* Ações - mantidas iguais */}
+            {/* ✅ Componente Cliente para o Botão de Progresso */}
+            <LessonProgressButton 
+              userId="user-temporario"
+              courseId={courseId}
+              lessonId={lessonId}
+              lessonTitle={lessonData.title}
+              moduleName={moduleData.title}
+              totalLessonsInCourse={totalLessonsInCourse}
+            />
+
+            {/* ✅ Navegação entre aulas - SEM EVENT HANDLERS */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
-              marginTop: '24px'
+              marginTop: '24px',
+              padding: '16px 0',
+              borderTop: '1px solid #e5e7eb'
             }}>
-              <Link
-                href={`/tenant/${subdomain}/courses/${courseId}/modules/${moduleId}/lessons`}
-                style={{
-                  color: '#0ea5e9',
+              {previousLesson ? (
+                <Link
+                  href={`/tenant/${subdomain}/courses/${courseId}/modules/${moduleId}/lessons/${previousLesson.id}`}
+                  style={{
+                    color: '#0ea5e9',
+                    fontWeight: '500',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: '1px solid #0ea5e9',
+                    transition: 'all 0.2s',
+                    backgroundColor: 'transparent'
+                  }}
+                >
+                  ← Aula Anterior: {previousLesson.title}
+                </Link>
+              ) : (
+                <div></div>
+              )}
+              
+              {nextLesson ? (
+                <Link
+                  href={`/tenant/${subdomain}/courses/${courseId}/modules/${moduleId}/lessons/${nextLesson.id}`}
+                  style={{
+                    color: '#0ea5e9',
+                    fontWeight: '500',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: '1px solid #0ea5e9',
+                    transition: 'all 0.2s',
+                    backgroundColor: 'transparent'
+                  }}
+                >
+                  Próxima Aula: {nextLesson.title} →
+                </Link>
+              ) : (
+                <div style={{
+                  color: '#10b981',
                   fontWeight: '500',
-                  textDecoration: 'none',
                   display: 'inline-flex',
-                  alignItems: 'center'
-                }}
-              >
-                ← Voltar para as aulas
-              </Link>
-              <Link
-                href={`/tenant/${subdomain}/courses/${courseId}/modules/${moduleId}/lessons/edit/${lessonId}`}
-                style={{
-                  color: '#4f46e5',
-                  fontWeight: '500',
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center'
-                }}
-              >
-                Editar Aula →
-              </Link>
+                  alignItems: 'center',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: '1px solid #10b981',
+                  backgroundColor: '#dcfce7'
+                }}>
+                  🎉 Módulo Concluído!
+                </div>
+              )}
             </div>
           </div>
         </div>
