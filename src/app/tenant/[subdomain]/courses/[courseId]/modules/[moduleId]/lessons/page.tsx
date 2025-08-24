@@ -1,19 +1,17 @@
-// src/app/tenant/[subdomain]/courses/[courseId]/modules/[id]/lessons/page.tsx
-// (Note a mudança no caminho do arquivo refletindo a nova estrutura sem /dashboard)
+// src/app/tenant/[subdomain]/courses/[courseId]/modules/[moduleId]/lessons/page.tsx
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import Link from 'next/link';
-// import DeleteLessonButton from '@/components/tenant/DeleteLessonButton'; // Mantenha se o componente existir
+import DeleteLessonButton from './DeleteLessonButton'; // ✅ Importar o componente
 
-// Definindo interfaces para tipagem (ajuste conforme seus dados)
+// Definindo interfaces para tipagem
 interface TenantData {
   id: string;
   name: string;
   subdomain: string;
   ownerId: string;
   createdAt: any;
-  // settings?: { ... };
 }
 
 interface CourseData {
@@ -23,8 +21,7 @@ interface CourseData {
   price?: number;
   status: 'published' | 'draft';
   createdAt: any;
-  tenantId: string; // ID do documento do tenant no Firestore
-  // ... outros campos
+  tenantId: string;
 }
 
 interface ModuleData {
@@ -34,7 +31,6 @@ interface ModuleData {
   order: number;
   courseId: string;
   createdAt: any;
-  // ... outros campos
 }
 
 interface LessonData {
@@ -43,16 +39,14 @@ interface LessonData {
   description?: string;
   order: number;
   moduleId: string;
-  type: 'video' | 'text' | string; // Ajuste conforme os tipos possíveis
-  duration?: number; // Em segundos
+  type: 'video' | 'text' | string;
+  duration?: number;
   createdAt: any;
-  // ... outros campos
 }
 
-export default async function ModuleLessonsPage({ params }: { params: Promise<{ subdomain: string; courseId: string; id: string }> }) {
-  // ✅ CORREÇÃO 1: O tipo agora reflete que o parâmetro dinâmico é 'id'
-  // ✅ CORREÇÃO 2: Desestruturamos 'id' e o renomeamos para 'moduleId' para clareza
-  const { subdomain, courseId, id: moduleId } = await params;
+export default async function ModuleLessonsPage({ params }: { params: Promise<{ subdomain: string; courseId: string; moduleId: string }> }) {
+  const resolvedParams = await params;
+  const { subdomain, courseId, moduleId } = resolvedParams;
 
   console.log(`[ModuleLessonsPage] Acessando aulas para o módulo: ${moduleId} do curso: ${courseId} no tenant: ${subdomain}`);
 
@@ -93,7 +87,7 @@ export default async function ModuleLessonsPage({ params }: { params: Promise<{ 
       return notFound();
     }
 
-    // ✅ PASSO 3: Verificar se o curso existe e pertence AO TENANT (usando o ID real do tenant)
+    // ✅ PASSO 3: Verificar se o curso existe e pertence AO TENANT
     const courseRef = doc(db, 'courses', courseId);
     const courseSnap = await getDoc(courseRef);
 
@@ -113,9 +107,7 @@ export default async function ModuleLessonsPage({ params }: { params: Promise<{ 
       return notFound();
     }
 
-
     // ✅ PASSO 4: Buscar as aulas do módulo, ordenadas por 'order'
-    // ✅ CORREÇÃO 4: Usamos 'moduleId' (que veio de 'id') na query
     const lessonsQuery = query(
       collection(db, 'lessons'),
       where('moduleId', '==', moduleId),
@@ -132,7 +124,7 @@ export default async function ModuleLessonsPage({ params }: { params: Promise<{ 
 
     return (
       <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
-        {/* Header - Mantendo a consistência */}
+        {/* Header */}
         <div style={{
           background: 'white',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
@@ -167,7 +159,7 @@ export default async function ModuleLessonsPage({ params }: { params: Promise<{ 
                 gap: '16px'
               }}>
                 <Link
-                  href={`/tenant/${subdomain}/courses/${courseId}/modules`} // ✅ Caminho ajustado
+                  href={`/tenant/${subdomain}/courses/${courseId}/modules`}
                   style={{
                     background: '#64748b',
                     color: 'white',
@@ -220,7 +212,7 @@ export default async function ModuleLessonsPage({ params }: { params: Promise<{ 
                 </p>
               </div>
               <Link
-                href={`/tenant/${subdomain}/courses/${courseId}/modules/${moduleId}/lessons/create`} // ✅ Caminho ajustado
+                href={`/tenant/${subdomain}/courses/${courseId}/modules/${moduleId}/lessons/create`}
                 style={{
                   background: '#0ea5e9',
                   color: 'white',
@@ -259,7 +251,7 @@ export default async function ModuleLessonsPage({ params }: { params: Promise<{ 
                   Comece criando sua primeira aula para este módulo.
                 </p>
                 <Link
-                  href={`/tenant/${subdomain}/courses/${courseId}/modules/${moduleId}/lessons/create`} // ✅ Caminho ajustado
+                  href={`/tenant/${subdomain}/courses/${courseId}/modules/${moduleId}/lessons/create`}
                   style={{
                     background: '#0ea5e9',
                     color: 'white',
@@ -291,9 +283,8 @@ export default async function ModuleLessonsPage({ params }: { params: Promise<{ 
                           marginBottom: '12px'
                         }}>
                           <div>
-                            {/* Título da aula como link para visualização */}
                             <Link
-                              href={`/tenant/${subdomain}/courses/${courseId}/modules/${moduleId}/lessons/${lesson.id}`} // ✅ Caminho ajustado
+                              href={`/tenant/${subdomain}/courses/${courseId}/modules/${moduleId}/lessons/${lesson.id}`}
                               style={{
                                 fontSize: '16px',
                                 fontWeight: '600',
@@ -346,9 +337,8 @@ export default async function ModuleLessonsPage({ params }: { params: Promise<{ 
                           gap: '12px',
                           marginTop: '8px'
                         }}>
-                          {/* Botões de ação: Editar, Excluir */}
                           <Link
-                            href={`/tenant/${subdomain}/courses/${courseId}/modules/${moduleId}/lessons/edit/${lesson.id}`} // ✅ Caminho ajustado
+                            href={`/tenant/${subdomain}/courses/${courseId}/modules/${moduleId}/lessons/edit/${lesson.id}`}
                             style={{
                               color: '#4f46e5',
                               fontWeight: '500',
@@ -358,22 +348,14 @@ export default async function ModuleLessonsPage({ params }: { params: Promise<{ 
                           >
                             Editar
                           </Link>
-                          {/* Se DeleteLessonButton existir e usar estilos inline, mantenha. Senão, comente ou remova */}
-                          {/* <DeleteLessonButton lessonId={lesson.id} moduleId={moduleId} courseId={courseId} subdomain={subdomain} /> */}
-                          <button
-                            disabled
-                            style={{
-                              color: '#9ca3af',
-                              fontWeight: '500',
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'not-allowed',
-                              padding: 0,
-                              fontSize: '14px'
-                            }}
-                          >
-                            Excluir
-                          </button>
+                          {/* ✅ BOTÃO DE EXCLUSÃO */}
+                          <DeleteLessonButton 
+                            lessonId={lesson.id}
+                            moduleId={moduleId}
+                            courseId={courseId}
+                            subdomain={subdomain}
+                            lessonTitle={lesson.title}
+                          />
                         </div>
                       </div>
                     </li>
@@ -381,16 +363,12 @@ export default async function ModuleLessonsPage({ params }: { params: Promise<{ 
                 </ul>
               </div>
             )}
-
-            {/* ✅ ALTERAÇÃO: Removido o link "Voltar para os módulos" e "Voltar para a lista de cursos" do final */}
-            {/* A navegação principal agora é feita pelo botão "Voltar" no cabeçalho */}
           </div>
         </div>
       </div>
     );
   } catch (error) {
     console.error(`[ModuleLessonsPage] Erro ao buscar dados do módulo '${moduleId}', curso '${courseId}' ou aulas:`, error);
-    // Em caso de erro interno, retorna 404 ou uma página de erro genérica
-    return notFound(); // ou return <div style={{ padding: '20px' }}>Erro interno do servidor</div>;
+    return notFound();
   }
 }

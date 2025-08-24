@@ -3,9 +3,9 @@ import { notFound } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import Link from 'next/link';
-// import DeleteModuleButton from '@/components/tenant/DeleteModuleButton'; // Mantenha se o componente existir
+import DeleteModuleButton from './DeleteModuleButton'; // ✅ Importar o componente
 
-// Definindo interfaces para tipagem (ajuste conforme seus dados)
+// Definindo interfaces para tipagem
 interface ModuleData {
   id: string;
   title: string;
@@ -13,7 +13,6 @@ interface ModuleData {
   order: number;
   courseId: string;
   createdAt: any;
-  // ... outros campos
 }
 
 export default async function CourseModulesPage({ params }: { params: Promise<{ subdomain: string; courseId: string }> }) {
@@ -38,7 +37,7 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
       ...(tenantDoc.data() as { [key: string]: any })
     };
 
-    // ✅ PASSO 2: Verificar se o curso existe e pertence AO TENANT (usando o ID real do tenant)
+    // ✅ PASSO 2: Verificar se o curso existe e pertence AO TENANT
     const courseRef = doc(db, 'courses', courseId);
     const courseSnap = await getDoc(courseRef);
 
@@ -75,7 +74,7 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
 
     return (
       <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
-        {/* Header - Mantendo a consistência */}
+        {/* Header */}
         <div style={{
           background: 'white',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
@@ -110,7 +109,7 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
                 gap: '16px'
               }}>
                 <Link
-                  href={`/tenant/${subdomain}/courses`} // Voltar para a lista de cursos
+                  href={`/tenant/${subdomain}/courses`}
                   style={{
                     background: '#64748b',
                     color: 'white',
@@ -155,7 +154,7 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
                 Gerenciar Módulos
               </h2>
               <Link
-                href={`/tenant/${subdomain}/courses/${courseId}/modules/create`} // ✅ Caminho ajustado
+                href={`/tenant/${subdomain}/courses/${courseId}/modules/create`}
                 style={{
                   background: '#0ea5e9',
                   color: 'white',
@@ -194,7 +193,7 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
                   Comece criando seu primeiro módulo para este curso.
                 </p>
                 <Link
-                  href={`/tenant/${subdomain}/courses/${courseId}/modules/create`} // ✅ Caminho ajustado
+                  href={`/tenant/${subdomain}/courses/${courseId}/modules/create`}
                   style={{
                     background: '#0ea5e9',
                     color: 'white',
@@ -227,7 +226,7 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
                         }}>
                           <div>
                             <Link
-                              href={`/tenant/${subdomain}/courses/${courseId}/modules/${module.id}/lessons`} // ✅ Caminho ajustado
+                              href={`/tenant/${subdomain}/courses/${courseId}/modules/${module.id}/lessons`}
                               style={{
                                 fontSize: '16px',
                                 fontWeight: '600',
@@ -281,7 +280,7 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
                           marginTop: '8px'
                         }}>
                           <Link
-                            href={`/tenant/${subdomain}/courses/${courseId}/modules/${module.id}/lessons`} // ✅ Caminho ajustado
+                            href={`/tenant/${subdomain}/courses/${courseId}/modules/${module.id}/lessons`}
                             style={{
                               color: '#0ea5e9',
                               fontWeight: '500',
@@ -292,7 +291,7 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
                             Gerenciar Conteúdo
                           </Link>
                           <Link
-                            href={`/tenant/${subdomain}/courses/${courseId}/modules/edit/${module.id}`} // ✅ Caminho ajustado
+                            href={`/tenant/${subdomain}/courses/${courseId}/modules/edit/${module.id}`}
                             style={{
                               color: '#4f46e5',
                               fontWeight: '500',
@@ -302,22 +301,13 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
                           >
                             Editar
                           </Link>
-                          {/* Se DeleteModuleButton existir e usar estilos inline, mantenha. Senão, comente ou remova */}
-                          {/* <DeleteModuleButton moduleId={module.id} courseId={courseId} subdomain={subdomain} /> */}
-                          <button
-                            disabled
-                            style={{
-                              color: '#9ca3af',
-                              fontWeight: '500',
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'not-allowed',
-                              padding: 0,
-                              fontSize: '14px'
-                            }}
-                          >
-                            Excluir
-                          </button>
+                          {/* ✅ BOTÃO DE EXCLUSÃO */}
+                          <DeleteModuleButton 
+                            moduleId={module.id}
+                            courseId={courseId}
+                            subdomain={subdomain}
+                            moduleTitle={module.title}
+                          />
                         </div>
                       </div>
                     </li>
@@ -325,15 +315,12 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
                 </ul>
               </div>
             )}
-
-            {/* ✅ ALTERAÇÃO: Removido o link "Voltar para a lista de cursos" daqui */}
-            {/* A navegação principal agora é feita pelo botão "Voltar" no cabeçalho */}
           </div>
         </div>
       </div>
     );
   } catch (error) {
     console.error(`[CourseModulesPage] Erro ao buscar dados do curso '${courseId}' ou módulos:`, error);
-    return notFound(); // ou return <div style={{ padding: '20px' }}>Erro interno do servidor</div>;
+    return notFound();
   }
 }

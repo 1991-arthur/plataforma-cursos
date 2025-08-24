@@ -1,15 +1,22 @@
-// src/app/tenant/[subdomain]/dashboard/courses/create/page.tsx
+// src/app/tenant/[subdomain]/courses/create/page.tsx
 'use client';
 
-import * as React from 'react'; // ✅ Importa React
+import * as React from 'react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import Link from 'next/link'; // Para o link de voltar
+import { 
+  collection, 
+  addDoc, 
+  serverTimestamp,
+  query,
+  where,
+  getDocs
+} from 'firebase/firestore';
+import Link from 'next/link';
 
 export default function CreateCoursePage({ params }: { params: Promise<{ subdomain: string }> }) {
-  // ✅ Usa React.use para desembrulhar a Promise params
+  // ✅ Desembrulha a Promise params com React.use
   const resolvedParams = React.use(params);
   const { subdomain } = resolvedParams;
   
@@ -19,8 +26,7 @@ export default function CreateCoursePage({ params }: { params: Promise<{ subdoma
   const [price, setPrice] = useState('');
   const [status, setStatus] = useState('draft');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null); // Tipagem explícita
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null); // Para feedback
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,31 +38,35 @@ export default function CreateCoursePage({ params }: { params: Promise<{ subdoma
 
     setLoading(true);
     setMessage(null);
-    setError(null);
 
     try {
       console.log(`[CreateCoursePage] Criando novo curso para o tenant: ${subdomain}`);
       
-      // --- PASSO 1: Buscar o ID do tenant pelo subdomain ---
-      // (Você pode otimizar isso passando o tenantId diretamente se já estiver disponível)
-      // Para esta página, vamos assumir que o tenantId é o mesmo que o subdomain
-      // ou você pode fazer uma consulta como nas outras páginas.
-      // Vamos manter a simplicidade por enquanto, mas idealmente buscar o tenantId real.
+      // ✅ BUSCAR O TENANT PELO SUBDOMAIN PARA OBTER O ID REAL
+      const tenantsQuery = query(
+        collection(db, 'tenants'),
+        where('subdomain', '==', subdomain)
+      );
       
-      // Para manter a consistência, vamos buscar o tenantId real.
-      // Isso requer uma consulta ao Firestore, o que pode ser feito aqui ou passando o ID.
-      // Vamos supor que o ID do tenant é o mesmo que o subdomain por enquanto.
-      // ATENÇÃO: Isso só funciona se o ID do documento no Firestore for o mesmo que o subdomain.
-      // Na prática, é melhor buscar o tenant pelo subdomain e obter o ID real.
-      // Vamos manter assim por simplicidade, mas anote que isso pode precisar de ajuste.
-      const tenantId = subdomain; 
+      const tenantsSnapshot = await getDocs(tenantsQuery);
+      
+      if (tenantsSnapshot.empty) {
+        throw new Error('Tenant não encontrado');
+      }
+      
+      const tenantDoc = tenantsSnapshot.docs[0];
+      const tenantId = tenantDoc.id; // ✅ ID REAL DO TENANT
+      const tenantData = tenantDoc.data();
+      
+      console.log(`[CreateCoursePage] Tenant encontrado: ${tenantData.name} (ID: ${tenantId})`);
 
+      // ✅ CRIAR CURSO COM O TENANT ID CORRETO
       const docRef = await addDoc(collection(db, 'courses'), {
         title: title.trim(),
         description: description.trim(),
         price: price ? parseFloat(price) : 0,
         status,
-        tenantId, // ID do tenant ao qual o curso pertence
+        tenantId, // ✅ ID CORRETO DO TENANT
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -70,14 +80,14 @@ export default function CreateCoursePage({ params }: { params: Promise<{ subdoma
       setPrice('');
       setStatus('draft');
 
-      // Redirecionar para a lista de cursos após um breve delay
+      // Redirecionar para a lista de cursos
       setTimeout(() => {
         router.push(`/tenant/${subdomain}/courses`);
       }, 1500);
 
     } catch (err: any) {
       console.error('[CreateCoursePage] ❌ Erro ao criar curso:', err);
-      setMessage({ type: 'error', text: 'Falha ao criar o curso. Tente novamente.' });
+      setMessage({ type: 'error', text: `Falha ao criar o curso: ${err.message || 'Tente novamente.'}` });
     } finally {
       setLoading(false);
     }
@@ -85,7 +95,7 @@ export default function CreateCoursePage({ params }: { params: Promise<{ subdoma
 
   return (
     <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
-      {/* Header - Mantendo a consistência */}
+      {/* Header */}
       <div style={{
         background: 'white',
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
@@ -120,7 +130,7 @@ export default function CreateCoursePage({ params }: { params: Promise<{ subdoma
               gap: '16px'
             }}>
               <Link
-                href={`/tenant/${subdomain}/dashboard/courses`} // Volta para a lista de cursos
+                href={`/tenant/${subdomain}/courses`}
                 style={{
                   background: '#64748b',
                   color: 'white',
@@ -175,14 +185,11 @@ export default function CreateCoursePage({ params }: { params: Promise<{ subdoma
           )}
 
           <form onSubmit={handleSubmit}>
-            {/* ✅ CORREÇÃO: Layout em grid sem @media no style */}
-            {/* Define um grid com duas colunas que se ajustará automaticamente */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr', // Duas colunas de tamanhos iguais por padrão
+              gridTemplateColumns: '1fr 1fr',
               gap: '20px'
             }}>
-              {/* Coluna Esquerda - Título e Descrição */}
               <div>
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{
@@ -240,7 +247,6 @@ export default function CreateCoursePage({ params }: { params: Promise<{ subdoma
                 </div>
               </div>
 
-              {/* Coluna Direita - Preço e Status */}
               <div>
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{
@@ -290,10 +296,7 @@ export default function CreateCoursePage({ params }: { params: Promise<{ subdoma
                       borderRadius: '8px',
                       fontSize: '14px',
                       outline: 'none',
-                      appearance: 'none', // Remove a seta padrão do select
-                      // Adicione uma seta personalizada se quiser
-                      // background: 'white url("data:image/svg+xml;charset=US-ASCII,...") no-repeat right 12px center',
-                      backgroundSize: '16px 16px'
+                      appearance: 'none',
                     }}
                   >
                     <option value="draft">Rascunho</option>
@@ -302,9 +305,7 @@ export default function CreateCoursePage({ params }: { params: Promise<{ subdoma
                 </div>
               </div>
             </div>
-            {/* ✅ FIM DA CORREÇÃO */}
 
-            {/* Botões de Ação */}
             <div style={{
               display: 'flex',
               justifyContent: 'flex-end',
@@ -312,7 +313,7 @@ export default function CreateCoursePage({ params }: { params: Promise<{ subdoma
               gap: '12px'
             }}>
               <Link
-                href={`/tenant/${subdomain}/courses`} // Volta para a lista de cursos
+                href={`/tenant/${subdomain}/courses`}
                 style={{
                   background: '#e2e8f0',
                   color: '#334155',

@@ -1,19 +1,18 @@
 // src/app/tenant/[subdomain]/courses/page.tsx
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import Link from 'next/link';
-// ✅ 1. Importar a Server Action
 import { deleteCourseAction } from '@/app/actions/courseActions';
+import DeleteButton from './DeleteButton'; // ✅ Componente cliente para o botão
 
-// Definindo interfaces para tipagem (ajuste conforme seus dados)
+// Definindo interfaces para tipagem
 interface TenantData {
   id: string;
   name: string;
   subdomain: string;
   ownerId: string;
-  createdAt: any; // Timestamp
-  // settings?: { ... };
+  createdAt: any;
 }
 
 interface CourseData {
@@ -21,10 +20,9 @@ interface CourseData {
   title: string;
   description?: string;
   price?: number;
-  status: 'published' | 'draft'; // ou string
-  createdAt: any; // Timestamp
-  tenantId: string; // ID do tenant ao qual o curso pertence
-  // ... outros campos
+  status: 'published' | 'draft';
+  createdAt: any;
+  tenantId: string;
 }
 
 export default async function CoursesPage({ params }: { params: Promise<{ subdomain: string }> }) {
@@ -40,7 +38,6 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
 
   // Busca o documento do tenant no Firestore com base no subdomain
   try {
-    // ✅ CONSULTA CORRIGIDA: Buscar pelo campo 'subdomain'
     const tenantsCollection = collection(db, 'tenants');
     const tenantQuery = query(tenantsCollection, where('subdomain', '==', subdomain));
     const tenantSnapshot = await getDocs(tenantQuery);
@@ -50,7 +47,6 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
       return notFound();
     }
 
-    // Assumindo subdomínios únicos, pega o primeiro (e único) resultado
     const tenantDoc = tenantSnapshot.docs[0];
     const tenantData: TenantData = {
       id: tenantDoc.id,
@@ -59,12 +55,11 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
 
     console.log(`[CoursesPage] Dados do tenant '${subdomain}' carregados:`, { id: tenantData.id, name: tenantData.name });
 
-    // Busca os cursos associados a este tenant usando o ID REAL do documento do tenant
-    // ✅ Adicionado orderBy para ordenar por data de criação, mais recente primeiro
+    // Busca os cursos associados a este tenant
     const coursesQuery = query(
       collection(db, 'courses'),
       where('tenantId', '==', tenantData.id),
-      orderBy('createdAt', 'desc') // Ordena por data de criação, decrescente
+      orderBy('createdAt', 'desc')
     );
     const coursesSnapshot = await getDocs(coursesQuery);
 
@@ -77,7 +72,7 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
 
     return (
       <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
-        {/* Header - Mantendo a consistência */}
+        {/* Header */}
         <div style={{
           background: 'white',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
@@ -112,7 +107,7 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
                 gap: '16px'
               }}>
                 <Link
-                  href={`/tenant/${subdomain}`} // Volta para a home do tenant
+                  href={`/tenant/${subdomain}`}
                   style={{
                     background: '#64748b',
                     color: 'white',
@@ -157,7 +152,7 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
                 Gerenciar Cursos
               </h2>
               <Link
-                href={`/tenant/${subdomain}/courses/create`} // ✅ Caminho ajustado
+                href={`/tenant/${subdomain}/courses/create`}
                 style={{
                   background: '#0ea5e9',
                   color: 'white',
@@ -196,7 +191,7 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
                   Comece criando seu primeiro curso.
                 </p>
                 <Link
-                  href={`/tenant/${subdomain}/courses/create`} // ✅ Caminho ajustado
+                  href={`/tenant/${subdomain}/courses/create`}
                   style={{
                     background: '#0ea5e9',
                     color: 'white',
@@ -262,10 +257,9 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
                             Criado em: {course.createdAt?.toDate?.().toLocaleDateString('pt-BR') || 'Data não disponível'}
                           </div>
                         </div>
-                        {/* Linha modificada: Adicionado o link "Gerenciar Conteúdo" com caminho ajustado */}
                         <div style={{ display: 'flex', gap: '16px' }}>
                           <Link
-                            href={`/tenant/${subdomain}/courses/${course.id}/modules`} // ✅ Caminho ajustado
+                            href={`/tenant/${subdomain}/courses/${course.id}/modules`}
                             style={{
                               color: '#0ea5e9',
                               fontWeight: '500',
@@ -275,7 +269,7 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
                             Gerenciar Conteúdo
                           </Link>
                           <Link
-                            href={`/tenant/${subdomain}/courses/edit/${course.id}`} // ✅ Caminho ajustado
+                            href={`/tenant/${subdomain}/courses/edit/${course.id}`}
                             style={{
                               color: '#4f46e5',
                               fontWeight: '500',
@@ -284,57 +278,13 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
                           >
                             Editar
                           </Link>
-                          {/* ✅ CORREÇÃO 2: Adicionando o Formulário e Botão de Excluir - Corrigido */}
-                          <form 
-                            action={async (formData: FormData) => {
-                              // Extrai os dados do FormData
-                              const courseId = formData.get('courseId') as string;
-                              const subdomainParam = formData.get('subdomain') as string;
-                              
-                              // Chama a Server Action com os dados extraídos
-                              // 'use server' actions podem ser chamadas diretamente com os argumentos
-                              const result = await deleteCourseAction(courseId, subdomainParam);
-                              
-                              // Opcional: Mostrar feedback para o usuário com base no resultado
-                              if (!result.success) {
-                                // Você pode usar um state para mostrar uma mensagem de erro
-                                // ou usar uma biblioteca de notificações como react-toastify
-                                console.error('[CoursesPage] Erro na exclusão:', result.error);
-                                alert(`Erro ao excluir: ${result.error}`); // Exemplo simples
-                              } else {
-                                // A página será revalidada automaticamente pela revalidatePath na action
-                                console.log('[CoursesPage] Curso excluído com sucesso.');
-                                // Opcional: Mostrar mensagem de sucesso
-                              }
-                            }}
-                            style={{ display: 'inline' }}
-                          >
-                            {/* Inputs ocultos para passar os dados */}
-                            <input type="hidden" name="courseId" value={course.id} />
-                            <input type="hidden" name="subdomain" value={subdomain} />
-                            
-                            <button
-                              type="submit"
-                              // onClick={(e) => {
-                              //   // Opcional: Adicionar confirmação com window.confirm
-                              //   if (!confirm('Tem certeza que deseja excluir este curso? Esta ação não pode ser desfeita.')) {
-                              //     e.preventDefault();
-                              //   }
-                              // }}
-                              style={{
-                                color: '#ef4444', // Vermelho para indicar ação destrutiva
-                                fontWeight: '500',
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                padding: 0,
-                                fontSize: '14px'
-                              }}
-                            >
-                              Excluir
-                            </button>
-                          </form>
-                          {/* ✅ FIM da Adição do Botão de Excluir - Corrigido */}
+                          
+                          {/* ✅ USANDO COMPONENTE CLIENTE PARA O BOTÃO DE EXCLUSÃO */}
+                          <DeleteButton 
+                            courseId={course.id} 
+                            subdomain={subdomain}
+                            action={deleteCourseAction}
+                          />
                         </div>
                       </div>
                     </li>
@@ -348,7 +298,6 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
     );
   } catch (error) {
     console.error(`[CoursesPage] Erro ao buscar dados do tenant '${subdomain}' ou cursos:`, error);
-    // Em caso de erro interno, retorna 404 ou uma página de erro genérica
-    return notFound(); // ou return <div style={{ padding: '20px' }}>Erro interno do servidor</div>;
+    return notFound();
   }
 }
