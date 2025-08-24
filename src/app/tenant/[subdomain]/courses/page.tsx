@@ -284,10 +284,35 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
                           >
                             Editar
                           </Link>
-                          {/* ✅ 2. Adicionando o Formulário e Botão de Excluir */}
-                          <form action={deleteCourseAction} style={{ display: 'inline' }}>
+                          {/* ✅ CORREÇÃO 2: Adicionando o Formulário e Botão de Excluir - Corrigido */}
+                          <form 
+                            action={async (formData: FormData) => {
+                              // Extrai os dados do FormData
+                              const courseId = formData.get('courseId') as string;
+                              const subdomainParam = formData.get('subdomain') as string;
+                              
+                              // Chama a Server Action com os dados extraídos
+                              // 'use server' actions podem ser chamadas diretamente com os argumentos
+                              const result = await deleteCourseAction(courseId, subdomainParam);
+                              
+                              // Opcional: Mostrar feedback para o usuário com base no resultado
+                              if (!result.success) {
+                                // Você pode usar um state para mostrar uma mensagem de erro
+                                // ou usar uma biblioteca de notificações como react-toastify
+                                console.error('[CoursesPage] Erro na exclusão:', result.error);
+                                alert(`Erro ao excluir: ${result.error}`); // Exemplo simples
+                              } else {
+                                // A página será revalidada automaticamente pela revalidatePath na action
+                                console.log('[CoursesPage] Curso excluído com sucesso.');
+                                // Opcional: Mostrar mensagem de sucesso
+                              }
+                            }}
+                            style={{ display: 'inline' }}
+                          >
+                            {/* Inputs ocultos para passar os dados */}
                             <input type="hidden" name="courseId" value={course.id} />
                             <input type="hidden" name="subdomain" value={subdomain} />
+                            
                             <button
                               type="submit"
                               // onClick={(e) => {
@@ -309,7 +334,7 @@ export default async function CoursesPage({ params }: { params: Promise<{ subdom
                               Excluir
                             </button>
                           </form>
-                          {/* ✅ FIM da Adição do Botão de Excluir */}
+                          {/* ✅ FIM da Adição do Botão de Excluir - Corrigido */}
                         </div>
                       </div>
                     </li>
