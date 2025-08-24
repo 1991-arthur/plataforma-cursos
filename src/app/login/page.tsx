@@ -1,105 +1,105 @@
 // src/app/login/page.tsx
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import Link from 'next/link'; // Importa o componente Link
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  // const [name, setName] = useState(''); // Removido: Não é usado para login
-  // const [isLogin, setIsLogin] = useState(true); // Removido: Não é mais um toggle
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  
-  const { signIn /*, signUp*/ } = useAuth(); // Removido signUp: Não é usado nesta página
+  const { login, isLoading, error } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // ✅ Obter tenantId dos parâmetros da URL
+  const tenantId = searchParams.get('tenant') || process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || 'default';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-
+    
     try {
-      // if (isLogin) { // Simplificado: Esta página é apenas para login
-        await signIn(email, password);
-        router.push('/dashboard'); // Redireciona após login bem-sucedido
-      // } else {
-      //   // Esta parte foi movida para /register
-      // }
-    } catch (error: any) {
-      console.error("Erro no login:", error); // Adicionado log para depuração
-      setError(error.message || 'Falha ao fazer login. Verifique suas credenciais.');
-    } finally {
-      setLoading(false);
+      await login(email, password);
+      // ✅ Redirecionar para o dashboard do tenant correto
+      router.push(`/student/dashboard?tenant=${tenantId}`);
+    } catch (error) {
+      console.error('Erro no login:', error);
     }
   };
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%)',
+      background: '#f9fafb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '16px'
+      padding: '20px'
     }}>
       <div style={{
         background: 'white',
-        borderRadius: '16px',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        borderRadius: '12px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        padding: '32px',
         width: '100%',
-        maxWidth: '400px',
-        padding: '32px'
+        maxWidth: '400px'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          {/* Título fixo para Login */}
           <h1 style={{
-            fontSize: '32px',
+            fontSize: '24px',
             fontWeight: 'bold',
-            color: '#1f2937',
+            color: '#111827',
             marginBottom: '8px'
           }}>
-            Entrar
+            🎓 Acessar Plataforma - {tenantId}
           </h1>
-          {/* Subtítulo fixo para Login */}
-          <p style={{ color: '#6b7280' }}>
-            Acesse sua plataforma de cursos
+          <p style={{
+            color: '#64748b',
+            fontSize: '14px'
+          }}>
+            Entre com suas credenciais
           </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {/* Campo de Nome removido: Não é necessário para login */}
+        {error && (
+          <div style={{
+            padding: '12px 16px',
+            borderRadius: '8px',
+            marginBottom: '24px',
+            background: '#fee2e2',
+            border: '1px solid #fecaca',
+            color: '#991b1b'
+          }}>
+            {error}
+          </div>
+        )}
 
-          <div style={{ marginBottom: '24px' }}>
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
               fontSize: '14px',
               fontWeight: '500',
-              color: '#374151',
-              marginBottom: '8px'
+              color: '#334155',
+              marginBottom: '6px'
             }}>
-              Email
+              E-mail
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              required
               style={{
                 width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #d1d5db',
+                padding: '10px 12px',
+                border: '1px solid #cbd5e1',
                 borderRadius: '8px',
-                fontSize: '16px',
-                outline: 'none',
-                transition: 'border-color 0.2s'
+                fontSize: '14px',
+                outline: 'none'
               }}
               placeholder="seu@email.com"
-              required
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
             />
           </div>
 
@@ -108,8 +108,8 @@ export default function LoginPage() {
               display: 'block',
               fontSize: '14px',
               fontWeight: '500',
-              color: '#374151',
-              marginBottom: '8px'
+              color: '#334155',
+              marginBottom: '6px'
             }}>
               Senha
             </label>
@@ -117,75 +117,62 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
               style={{
                 width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #d1d5db',
+                padding: '10px 12px',
+                border: '1px solid #cbd5e1',
                 borderRadius: '8px',
-                fontSize: '16px',
-                outline: 'none',
-                transition: 'border-color 0.2s'
+                fontSize: '14px',
+                outline: 'none'
               }}
               placeholder="••••••••"
-              required
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
             />
           </div>
 
-          {error && (
-            <div style={{
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
-              color: '#dc2626',
-              padding: '12px 16px',
-              borderRadius: '8px',
-              marginBottom: '24px'
-            }}>
-              {error}
-            </div>
-          )}
-
           <button
             type="submit"
-            disabled={loading}
+            disabled={isLoading}
             style={{
               width: '100%',
-              background: loading ? '#93c5fd' : '#3b82f6',
+              background: isLoading ? '#94a3b8' : '#0ea5e9',
               color: 'white',
-              fontWeight: '600',
               padding: '12px 16px',
               borderRadius: '8px',
               border: 'none',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              fontWeight: '500',
+              fontSize: '16px',
               transition: 'background-color 0.2s'
             }}
-            onMouseOver={(e) => {
-              if (!loading) e.target.style.background = '#2563eb';
-            }}
-            onMouseOut={(e) => {
-              if (!loading) e.target.style.background = '#3b82f6';
-            }}
           >
-            {loading ? 'Entrando...' : 'Entrar'}
+            {isLoading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
 
-        {/* Link para a página de registro, substituindo o botão toggle */}
-        <div style={{ marginTop: '24px', textAlign: 'center' }}>
-          <p style={{ color: '#6b7280' }}>
-            Não tem conta?{' '}
-            <Link
-              href="/register" // Link para a nova página de registro
-              style={{
-                color: '#3b82f6',
-                fontWeight: '500',
-                textDecoration: 'underline'
-              }}
-            >
-              Criar uma conta
-            </Link>
+        <div style={{
+          textAlign: 'center',
+          marginTop: '24px',
+          paddingTop: '24px',
+          borderTop: '1px solid #e5e7eb'
+        }}>
+          <p style={{
+            color: '#64748b',
+            fontSize: '14px',
+            marginBottom: '16px'
+          }}>
+            Ainda não tem uma conta?
           </p>
+          <Link
+            href={`/register?tenant=${tenantId}`}
+            style={{
+              color: '#0ea5e9',
+              fontWeight: '500',
+              textDecoration: 'none'
+            }}
+          >
+            Criar nova conta
+          </Link>
         </div>
       </div>
     </div>

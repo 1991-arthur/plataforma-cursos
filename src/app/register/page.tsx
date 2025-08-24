@@ -1,186 +1,154 @@
 // src/app/register/page.tsx
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import React, { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 
 export default function RegisterPage() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  
-  const { signUp } = useAuth();
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const { register, isLoading, error } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // ✅ Obter tenantId dos parâmetros da URL
+  const tenantId = searchParams.get('tenant') || process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || 'default';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-
+    
+    if (password !== confirmPassword) {
+      alert('As senhas não coincidem');
+      return;
+    }
+    
+    if (password.length < 6) {
+      alert('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+    
     try {
-      await signUp(email, password, name);
-      setSuccess(true);
-      // Opcional: Redirecionar automaticamente após alguns segundos
-      // setTimeout(() => router.push('/login'), 3000);
-    } catch (error: any) {
-      console.error("Erro no registro:", error);
-      setError(error.message || 'Falha ao criar conta. Tente novamente.');
-    } finally {
-      setLoading(false);
+      await register(email, password, name);
+      // ✅ Redirecionar para o dashboard do tenant correto
+      router.push(`/student/dashboard?tenant=${tenantId}`);
+    } catch (error) {
+      console.error('Erro no registro:', error);
     }
   };
-
-  if (success) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px'
-      }}>
-        <div style={{
-          background: 'white',
-          borderRadius: '16px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          width: '100%',
-          maxWidth: '400px',
-          padding: '32px',
-          textAlign: 'center'
-        }}>
-          <h1 style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            color: '#10b981', // Verde para sucesso
-            marginBottom: '16px'
-          }}>
-            Conta Criada com Sucesso!
-          </h1>
-          <p style={{ color: '#6b7280', marginBottom: '24px' }}>
-            Sua conta foi criada. Agora você pode fazer login.
-          </p>
-          <Link href="/login" style={{
-            display: 'inline-block',
-            background: '#3b82f6',
-            color: 'white',
-            fontWeight: '600',
-            padding: '12px 16px',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            transition: 'background-color 0.2s'
-          }}>
-            Fazer Login
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%)',
+      background: '#f9fafb',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '16px'
+      padding: '20px'
     }}>
       <div style={{
         background: 'white',
-        borderRadius: '16px',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        borderRadius: '12px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        padding: '32px',
         width: '100%',
-        maxWidth: '400px',
-        padding: '32px'
+        maxWidth: '400px'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h1 style={{
-            fontSize: '32px',
+            fontSize: '24px',
             fontWeight: 'bold',
-            color: '#1f2937',
+            color: '#111827',
             marginBottom: '8px'
           }}>
-            Criar Conta
+            🎓 Criar Conta - {tenantId}
           </h1>
-          <p style={{ color: '#6b7280' }}>
-            Crie sua conta para começar
+          <p style={{
+            color: '#64748b',
+            fontSize: '14px'
+          }}>
+            Cadastre-se para acessar a plataforma
           </p>
         </div>
 
+        {error && (
+          <div style={{
+            padding: '12px 16px',
+            borderRadius: '8px',
+            marginBottom: '24px',
+            background: '#fee2e2',
+            border: '1px solid #fecaca',
+            color: '#991b1b'
+          }}>
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
               fontSize: '14px',
               fontWeight: '500',
-              color: '#374151',
-              marginBottom: '8px'
+              color: '#334155',
+              marginBottom: '6px'
             }}>
-              Nome
+              Nome Completo
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              required
               style={{
                 width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #d1d5db',
+                padding: '10px 12px',
+                border: '1px solid #cbd5e1',
                 borderRadius: '8px',
-                fontSize: '16px',
-                outline: 'none',
-                transition: 'border-color 0.2s'
+                fontSize: '14px',
+                outline: 'none'
               }}
-              placeholder="Seu nome completo"
-              required
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+              placeholder="Seu nome"
             />
           </div>
 
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
               fontSize: '14px',
               fontWeight: '500',
-              color: '#374151',
-              marginBottom: '8px'
+              color: '#334155',
+              marginBottom: '6px'
             }}>
-              Email
+              E-mail
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              required
               style={{
                 width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #d1d5db',
+                padding: '10px 12px',
+                border: '1px solid #cbd5e1',
                 borderRadius: '8px',
-                fontSize: '16px',
-                outline: 'none',
-                transition: 'border-color 0.2s'
+                fontSize: '14px',
+                outline: 'none'
               }}
               placeholder="seu@email.com"
-              required
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
             />
           </div>
 
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
               fontSize: '14px',
               fontWeight: '500',
-              color: '#374151',
-              marginBottom: '8px'
+              color: '#334155',
+              marginBottom: '6px'
             }}>
               Senha
             </label>
@@ -188,79 +156,97 @@ export default function RegisterPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
               style={{
                 width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #d1d5db',
+                padding: '10px 12px',
+                border: '1px solid #cbd5e1',
                 borderRadius: '8px',
-                fontSize: '16px',
-                outline: 'none',
-                transition: 'border-color 0.2s'
+                fontSize: '14px',
+                outline: 'none'
               }}
               placeholder="••••••••"
-              required
-              minLength={6} // Exigir senha mínima
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+              minLength={6}
             />
-            <p style={{ 
-              fontSize: '12px', 
-              color: '#9ca3af', 
-              marginTop: '4px' 
+            <div style={{
+              fontSize: '12px',
+              color: '#64748b',
+              marginTop: '4px'
             }}>
               Mínimo de 6 caracteres
-            </p>
+            </div>
           </div>
 
-          {error && (
-            <div style={{
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
-              color: '#dc2626',
-              padding: '12px 16px',
-              borderRadius: '8px',
-              marginBottom: '24px'
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#334155',
+              marginBottom: '6px'
             }}>
-              {error}
-            </div>
-          )}
+              Confirmar Senha
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                fontSize: '14px',
+                outline: 'none'
+              }}
+              placeholder="••••••••"
+            />
+          </div>
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={isLoading}
             style={{
               width: '100%',
-              background: loading ? '#93c5fd' : '#3b82f6',
+              background: isLoading ? '#94a3b8' : '#0ea5e9',
               color: 'white',
-              fontWeight: '600',
               padding: '12px 16px',
               borderRadius: '8px',
               border: 'none',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              fontWeight: '500',
+              fontSize: '16px',
               transition: 'background-color 0.2s'
             }}
-            onMouseOver={(e) => {
-              if (!loading) e.target.style.background = '#2563eb';
-            }}
-            onMouseOut={(e) => {
-              if (!loading) e.target.style.background = '#3b82f6';
-            }}
           >
-            {loading ? 'Criando Conta...' : 'Criar Conta'}
+            {isLoading ? 'Criando conta...' : 'Criar Conta'}
           </button>
         </form>
 
-        <div style={{ marginTop: '24px', textAlign: 'center' }}>
-          <p style={{ color: '#6b7280' }}>
-            Já tem uma conta?{' '}
-            <Link href="/login" style={{
-              color: '#3b82f6',
-              fontWeight: '500',
-              textDecoration: 'underline'
-            }}>
-              Fazer login
-            </Link>
+        <div style={{
+          textAlign: 'center',
+          marginTop: '24px',
+          paddingTop: '24px',
+          borderTop: '1px solid #e5e7eb'
+        }}>
+          <p style={{
+            color: '#64748b',
+            fontSize: '14px',
+            marginBottom: '16px'
+          }}>
+            Já tem uma conta?
           </p>
+          <Link
+            href={`/login?tenant=${tenantId}`}
+            style={{
+              color: '#0ea5e9',
+              fontWeight: '500',
+              textDecoration: 'none'
+            }}
+          >
+            Fazer login
+          </Link>
         </div>
       </div>
     </div>
