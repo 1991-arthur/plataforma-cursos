@@ -24,6 +24,8 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  console.log('[AuthProvider] Componente carregado');
+  
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
@@ -33,17 +35,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Verificar estado de autenticação
   useEffect(() => {
+    console.log('[Auth] Iniciando listener de estado de autenticação');
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('[Auth] Estado de autenticação mudou:', firebaseUser ? 'Usuário logado' : 'Nenhum usuário');
+      
       if (firebaseUser) {
         try {
+          console.log('[Auth] Processando usuário autenticado:', firebaseUser.uid);
           // Buscar dados do usuário no Firestore
           const db = getFirestore();
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          console.log('[Auth] Buscando usuário no Firestore:', firebaseUser.uid);
+          
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          const userDoc = await getDoc(userDocRef);
+          console.log('[Auth] Documento encontrado:', userDoc.exists());
           
           let userData: User;
           
           if (userDoc.exists()) {
             // Usuário já existe
+            console.log('[Auth] Usuário existente encontrado');
             const data = userDoc.data();
             userData = {
               id: firebaseUser.uid,
@@ -56,11 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             };
             
             // Atualizar último login
-            await setDoc(doc(db, 'users', firebaseUser.uid), {
+            console.log('[Auth] Atualizando último login');
+            await setDoc(userDocRef, {
               lastLoginAt: new Date()
             }, { merge: true });
           } else {
             // ✅ Criar novo usuário no Firestore
+            console.log('[Auth] 🚀 Criando novo usuário no Firestore para:', firebaseUser.uid);
             userData = {
               id: firebaseUser.uid,
               email: firebaseUser.email || '',
@@ -71,9 +84,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               isActive: true
             };
             
-            await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+            console.log('[Auth] Dados do novo usuário:', userData);
+            try {
+              await setDoc(userDocRef, userData);
+              console.log('[Auth] ✅ Usuário criado com sucesso no Firestore');
+            } catch (createError) {
+              console.error('[Auth] ❌ Erro ao criar usuário no Firestore:', createError);
+              throw createError;
+            }
           }
           
+          console.log('[Auth] Usuário processado:', userData);
           setAuthState({
             user: userData,
             isAuthenticated: true,
@@ -81,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             error: null
           });
         } catch (error) {
-          console.error('Erro ao buscar/criar dados do usuário:', error);
+          console.error('[Auth] ❌ Erro ao buscar/criar dados do usuário:', error);
           setAuthState({
             user: null,
             isAuthenticated: false,
@@ -90,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }
       } else {
+        console.log('[Auth] Nenhum usuário autenticado');
         setAuthState({
           user: null,
           isAuthenticated: false,
@@ -99,14 +121,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      console.log('[Auth] Limpando listener');
+      unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
+      console.log('[Auth] Tentando login:', email);
       setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
-      await signInWithEmailAndPassword(auth, email, password);
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      console.log('[Auth] Login bem-sucedido:', result.user.uid);
     } catch (error: any) {
+      console.error('[Auth] Erro no login:', error);
       const errorMessage = getAuthErrorMessage(error.code);
       setAuthState(prev => ({ ...prev, error: errorMessage, isLoading: false }));
       throw error;
@@ -115,16 +143,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (email: string, password: string, name: string) => {
     try {
+      console.log('[Auth] Tentando registro:', email, name);
       setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
       
       // Criar usuário no Firebase Auth
+      console.log('[Auth] Criando usuário no Firebase Auth');
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
+      console.log('[Auth] Usuário criado no Auth:', firebaseUser.uid);
       
       // Atualizar nome do perfil
+      console.log('[Auth] Atualizando perfil do usuário');
       await updateProfile(firebaseUser, { displayName: name });
+      console.log('[Auth] Perfil atualizado');
       
-      // ✅ Criar documento no Firestore imediatamente
+      // Criar documento no Firestore imediatamente
       const db = getFirestore();
       const userData: User = {
         id: firebaseUser.uid,
@@ -136,9 +169,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isActive: true
       };
       
-      await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+      console.log('[Auth] Criando documento no Firestore para:', firebaseUser.uid);
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      await setDoc(userDocRef, userData);
+      console.log('[Auth] ✅ Documento criado com sucesso no Firestore');
       
     } catch (error: any) {
+      console.error('[Auth] ❌ Erro no registro:', error);
       const errorMessage = getAuthErrorMessage(error.code);
       setAuthState(prev => ({ ...prev, error: errorMessage, isLoading: false }));
       throw error;
@@ -147,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      console.log('[Auth] Fazendo logout');
       await signOut(auth);
       setAuthState({
         user: null,
@@ -154,8 +192,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: null
       });
+      console.log('[Auth] Logout bem-sucedido');
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
+      console.error('[Auth] Erro ao fazer logout:', error);
       throw error;
     }
   };
@@ -174,6 +213,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshUser
   };
 
+  console.log('[AuthProvider] Provider renderizado com value:', value);
+  
   return (
     <AuthContext.Provider value={value}>
       {children}
@@ -186,6 +227,7 @@ export function useAuth() {
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+  console.log('[useAuth] Hook chamado, contexto:', context);
   return context;
 }
 
