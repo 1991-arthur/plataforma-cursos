@@ -3,29 +3,9 @@ import { notFound } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import Link from 'next/link';
-// import DeleteModuleButton from '@/components/tenant/DeleteModuleButton'; // Mantenha se o componente existir e estiver funcionando
+// import DeleteModuleButton from '@/components/tenant/DeleteModuleButton'; // Mantenha se o componente existir
 
 // Definindo interfaces para tipagem (ajuste conforme seus dados)
-interface TenantData {
-  id: string;
-  name: string;
-  subdomain: string;
-  ownerId: string;
-  createdAt: any;
-  // settings?: { ... };
-}
-
-interface CourseData {
-  id: string;
-  title: string;
-  description?: string;
-  price?: number;
-  status: 'published' | 'draft';
-  createdAt: any;
-  tenantId: string; // ID do documento do tenant no Firestore
-  // ... outros campos
-}
-
 interface ModuleData {
   id: string;
   title: string;
@@ -53,9 +33,9 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
     }
 
     const tenantDoc = tenantSnapshot.docs[0];
-    const tenantData: TenantData = {
+    const tenantData = {
       id: tenantDoc.id,
-      ...(tenantDoc.data() as Omit<TenantData, 'id'>)
+      ...(tenantDoc.data() as { [key: string]: any })
     };
 
     // ✅ PASSO 2: Verificar se o curso existe e pertence AO TENANT (usando o ID real do tenant)
@@ -67,9 +47,9 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
       return notFound();
     }
 
-    const courseData: CourseData = {
+    const courseData = {
       id: courseSnap.id,
-      ...(courseSnap.data() as Omit<CourseData, 'id'>)
+      ...(courseSnap.data() as { [key: string]: any })
     };
 
     // Verifica se o tenantId do curso corresponde ao ID do tenant encontrado
@@ -121,7 +101,7 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
                   color: '#111827',
                   margin: 0
                 }}>
-                  📚 Módulos - {courseData.title}
+                  📚 Gerenciar Módulos
                 </h1>
               </div>
               <div style={{
@@ -130,7 +110,7 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
                 gap: '16px'
               }}>
                 <Link
-                  href={`/tenant/${subdomain}/courses`} // ✅ Caminho ajustado
+                  href={`/tenant/${subdomain}/courses`} // Voltar para a lista de cursos
                   style={{
                     background: '#64748b',
                     color: 'white',
@@ -166,22 +146,14 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
               alignItems: 'center',
               marginBottom: '24px'
             }}>
-              <div>
-                <h2 style={{
-                  fontSize: '24px',
-                  fontWeight: '600',
-                  color: '#1f2937',
-                  margin: '0 0 8px 0'
-                }}>
-                  Gerenciar Módulos
-                </h2>
-                <p style={{
-                  color: '#64748b',
-                  margin: 0
-                }}>
-                  Organize o conteúdo do seu curso em módulos.
-                </p>
-              </div>
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: '600',
+                color: '#1f2937',
+                margin: '0'
+              }}>
+                Gerenciar Módulos
+              </h2>
               <Link
                 href={`/tenant/${subdomain}/courses/${courseId}/modules/create`} // ✅ Caminho ajustado
                 style={{
@@ -250,73 +222,102 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
                         <div style={{
                           display: 'flex',
                           justifyContent: 'space-between',
-                          alignItems: 'center',
+                          alignItems: 'flex-start',
                           marginBottom: '12px'
+                        }}>
+                          <div>
+                            <Link
+                              href={`/tenant/${subdomain}/courses/${courseId}/modules/${module.id}/lessons`} // ✅ Caminho ajustado
+                              style={{
+                                fontSize: '16px',
+                                fontWeight: '600',
+                                color: '#2563eb',
+                                textDecoration: 'none',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}
+                            >
+                              {module.title}
+                            </Link>
+                            {module.description && (
+                              <div style={{
+                                fontSize: '14px',
+                                color: '#6b7280',
+                                marginTop: '4px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}>
+                                {module.description}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-end',
+                            gap: '8px'
+                          }}>
+                            <div style={{
+                              background: '#dcfce7',
+                              color: '#166534',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              padding: '4px 8px',
+                              borderRadius: '12px'
+                            }}>
+                              Publicado
+                            </div>
+                            <div style={{
+                              fontSize: '12px',
+                              color: '#9ca3af'
+                            }}>
+                              Criado em: {module.createdAt?.toDate?.().toLocaleDateString('pt-BR') || 'Data não disponível'}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          gap: '12px',
+                          marginTop: '8px'
                         }}>
                           <Link
                             href={`/tenant/${subdomain}/courses/${courseId}/modules/${module.id}/lessons`} // ✅ Caminho ajustado
                             style={{
-                              fontSize: '16px',
-                              fontWeight: '600',
-                              color: '#2563eb',
+                              color: '#0ea5e9',
+                              fontWeight: '500',
                               textDecoration: 'none',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis'
+                              fontSize: '14px'
                             }}
                           >
-                            {module.order}. {module.title}
+                            Gerenciar Conteúdo
                           </Link>
-                          <div style={{ display: 'flex', gap: '12px' }}>
-                            {/* Botões de ação: Editar, Excluir */}
-                            <Link
-                              href={`/tenant/${subdomain}/courses/${courseId}/modules/edit/${module.id}`} // ✅ Caminho ajustado
-                              style={{
-                                color: '#4f46e5',
-                                fontWeight: '500',
-                                textDecoration: 'none',
-                                fontSize: '14px'
-                              }}
-                            >
-                              Editar
-                            </Link>
-                            {/* Se DeleteModuleButton existir e usar estilos inline, mantenha. Senão, comente ou remova */}
-                            {/* <DeleteModuleButton moduleId={module.id} courseId={courseId} subdomain={subdomain} /> */}
-                            {/* Placeholder para Delete, se não tiver o componente */}
-                            <button
-                              disabled
-                              style={{
-                                color: '#9ca3af',
-                                fontWeight: '500',
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'not-allowed',
-                                padding: 0,
-                                fontSize: '14px'
-                              }}
-                            >
-                              Excluir
-                            </button>
-                          </div>
-                        </div>
-                        {module.description && (
-                          <div style={{
-                            fontSize: '14px',
-                            color: '#6b7280',
-                            marginBottom: '8px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>
-                            {module.description}
-                          </div>
-                        )}
-                        <div style={{
-                          fontSize: '12px',
-                          color: '#9ca3af'
-                        }}>
-                          {/* Placeholder para número de aulas */}
-                          {/* Você pode adicionar uma query aqui para contar as aulas */}
-                          {/* <span>{countLessons(module.id)} aulas</span> */}
-                          ID: {module.id}
+                          <Link
+                            href={`/tenant/${subdomain}/courses/${courseId}/modules/edit/${module.id}`} // ✅ Caminho ajustado
+                            style={{
+                              color: '#4f46e5',
+                              fontWeight: '500',
+                              textDecoration: 'none',
+                              fontSize: '14px'
+                            }}
+                          >
+                            Editar
+                          </Link>
+                          {/* Se DeleteModuleButton existir e usar estilos inline, mantenha. Senão, comente ou remova */}
+                          {/* <DeleteModuleButton moduleId={module.id} courseId={courseId} subdomain={subdomain} /> */}
+                          <button
+                            disabled
+                            style={{
+                              color: '#9ca3af',
+                              fontWeight: '500',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'not-allowed',
+                              padding: 0,
+                              fontSize: '14px'
+                            }}
+                          >
+                            Excluir
+                          </button>
                         </div>
                       </div>
                     </li>
@@ -325,27 +326,14 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
               </div>
             )}
 
-            <div style={{ marginTop: '24px' }}>
-              <Link
-                href={`/tenant/${subdomain}/courses`} // ✅ Caminho ajustado
-                style={{
-                  color: '#0ea5e9',
-                  fontWeight: '500',
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center'
-                }}
-              >
-                ← Voltar para a lista de cursos
-              </Link>
-            </div>
+            {/* ✅ ALTERAÇÃO: Removido o link "Voltar para a lista de cursos" daqui */}
+            {/* A navegação principal agora é feita pelo botão "Voltar" no cabeçalho */}
           </div>
         </div>
       </div>
     );
   } catch (error) {
     console.error(`[CourseModulesPage] Erro ao buscar dados do curso '${courseId}' ou módulos:`, error);
-    // Em caso de erro interno, retorna 404 ou uma página de erro genérica
     return notFound(); // ou return <div style={{ padding: '20px' }}>Erro interno do servidor</div>;
   }
 }
