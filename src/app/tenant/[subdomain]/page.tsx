@@ -1,7 +1,7 @@
 // src/app/tenant/[subdomain]/page.tsx
 'use client';
 
-import * as React from 'react'; // Importa React para usar React.use
+import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { notFound, useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
@@ -23,7 +23,6 @@ interface TenantData {
 }
 
 export default function TenantHomePage({ params }: { params: Promise<{ subdomain: string }> }) {
-  // ✅ CORREÇÃO: Usa React.use para desembrulhar a Promise params
   const resolvedParams = React.use(params);
   const { subdomain } = resolvedParams;
 
@@ -33,6 +32,7 @@ export default function TenantHomePage({ params }: { params: Promise<{ subdomain
   const router = useRouter();
 
   useEffect(() => {
+    // ... (restante do useEffect permanece o mesmo)
     console.log(`[TenantHomePage] Carregando página para o subdomínio/tenant: ${subdomain}`);
 
     const fetchTenant = async () => {
@@ -47,7 +47,6 @@ export default function TenantHomePage({ params }: { params: Promise<{ subdomain
         setLoading(true);
         setError(null);
 
-        // CONSULTA CORRIGIDA: Buscar pelo campo 'subdomain' em vez do ID do documento
         const tenantsCollection = collection(db, 'tenants');
         const q = query(tenantsCollection, where('subdomain', '==', subdomain));
         const querySnapshot = await getDocs(q);
@@ -56,10 +55,9 @@ export default function TenantHomePage({ params }: { params: Promise<{ subdomain
           console.log(`[TenantHomePage] Tenant com subdomain '${subdomain}' não encontrado no Firestore.`);
           setError('Projeto não encontrado.');
           setLoading(false);
-          return; // Importante retornar aqui para evitar continuar
+          return;
         }
 
-        // Assumindo subdomínios únicos, pega o primeiro (e único) resultado
         const tenantDoc = querySnapshot.docs[0];
         const data: TenantData = {
           id: tenantDoc.id,
@@ -77,7 +75,9 @@ export default function TenantHomePage({ params }: { params: Promise<{ subdomain
     };
 
     fetchTenant();
-  }, [subdomain]); // Re-executa se o subdomain mudar
+  }, [subdomain]);
+
+  // ... (Blocos de Loading e Error permanecem os mesmos)
 
   if (loading) {
     return (
@@ -174,7 +174,6 @@ export default function TenantHomePage({ params }: { params: Promise<{ subdomain
   }
 
   if (!tenantData) {
-    // Fallback, embora o useEffect trate
     return notFound();
   }
 
@@ -214,6 +213,22 @@ export default function TenantHomePage({ params }: { params: Promise<{ subdomain
               alignItems: 'center',
               gap: '16px'
             }}>
+              {/* ✅ BOTÃO DE EDITAR ADICIONADO AQUI */}
+              <Link
+                href={`/tenant/${tenantData.subdomain}/edit`}
+                style={{
+                  background: '#f59e0b', // Cor amarela para destacar a ação de edição
+                  color: 'white',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  textDecoration: 'none',
+                  fontWeight: '500',
+                  display: 'inline-block'
+                }}
+              >
+                ✏️ Editar Projeto
+              </Link>
+              {/* ✅ FIM DO BOTÃO DE EDITAR */}
               <Link
                 href="/dashboard"
                 style={{
@@ -429,6 +444,7 @@ export default function TenantHomePage({ params }: { params: Promise<{ subdomain
                 </div>
               </Link>
 
+              {/* ... (restante da seção de ações permanece o mesmo) ... */}
               {/* Placeholder para outras seções futuras */}
               <div style={{
                 background: 'white',
